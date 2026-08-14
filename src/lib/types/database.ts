@@ -17,6 +17,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      folders: {
+        Row: {
+          id: string
+          name: string
+          user_id: string
+          parent_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          user_id?: string
+          parent_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          user_id?: string
+          parent_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'folders_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'folders_parent_id_fkey'
+            columns: ['parent_id']
+            isOneToOne: false
+            referencedRelation: 'folders'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       documents: {
         Row: {
           id: string
@@ -25,6 +64,7 @@ export type Database = {
           storage_path: string
           mime_type: string | null
           size_bytes: number | null
+          folder_id: string | null
           created_at: string
           updated_at: string
         }
@@ -35,6 +75,7 @@ export type Database = {
           storage_path: string
           mime_type?: string | null
           size_bytes?: number | null
+          folder_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -45,6 +86,7 @@ export type Database = {
           storage_path?: string
           mime_type?: string | null
           size_bytes?: number | null
+          folder_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -56,6 +98,13 @@ export type Database = {
             referencedRelation: 'users'
             referencedColumns: ['id']
           },
+          {
+            foreignKeyName: 'documents_folder_id_fkey'
+            columns: ['folder_id']
+            isOneToOne: false
+            referencedRelation: 'folders'
+            referencedColumns: ['id']
+          },
         ]
       }
       shares: {
@@ -65,6 +114,7 @@ export type Database = {
           token: string
           expires_at: string | null
           created_by: string
+          permission: string
           created_at: string
         }
         Insert: {
@@ -73,6 +123,7 @@ export type Database = {
           token?: string
           expires_at?: string | null
           created_by?: string
+          permission?: string
           created_at?: string
         }
         Update: {
@@ -81,6 +132,7 @@ export type Database = {
           token?: string
           expires_at?: string | null
           created_by?: string
+          permission?: string
           created_at?: string
         }
         Relationships: [

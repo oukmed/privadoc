@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import { ReplaceForm } from './replace-form'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 60 * 10 // 10 minutes
@@ -41,7 +42,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
   const { data: share } = await supabase
     .from('shares')
-    .select('expires_at, document_id')
+    .select('expires_at, document_id, permission')
     .eq('token', token)
     .maybeSingle()
 
@@ -74,6 +75,8 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
   if (!signed?.signedUrl) return shell(<Invalid />)
 
+  const canWrite = share.permission === 'write'
+
   return shell(
     <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
@@ -85,6 +88,15 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         {formatBytes(document.size_bytes)} · {formatDate(document.created_at)}
       </p>
+      <span
+        className={`mt-3 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          canWrite
+            ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300'
+            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+        }`}
+      >
+        {canWrite ? 'Modification autorisée' : 'Lecture seule'}
+      </span>
       <a
         href={signed.signedUrl}
         target="_blank"
@@ -93,6 +105,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
       >
         Ouvrir / Télécharger
       </a>
+      {canWrite && <ReplaceForm token={token} />}
     </div>,
   )
 }

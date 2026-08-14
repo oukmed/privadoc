@@ -59,12 +59,16 @@ export async function uploadDocument(_prevState: UploadState, formData: FormData
     .upload(path, file, { contentType, upsert: false })
   if (uploadError) return { error: uploadError.message }
 
+  // Optional target folder — RLS rejects a folder the caller does not own.
+  const folderId = String(formData.get('folderId') ?? '').trim()
+
   const { error: insertError } = await supabase.from('documents').insert({
     owner_id: user.id,
     title: file.name,
     storage_path: path,
     mime_type: contentType,
     size_bytes: file.size,
+    ...(folderId ? { folder_id: folderId } : {}),
   })
 
   if (insertError) {

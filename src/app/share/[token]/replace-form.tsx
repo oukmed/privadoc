@@ -1,18 +1,19 @@
 'use client'
 
 import { useActionState, useEffect, useRef } from 'react'
-import { uploadDocument, type UploadState } from '@/app/documents/actions'
+import { replaceSharedDocument, type ShareState } from '@/app/documents/share-actions'
 
-interface UploadFormProps {
-  /** Optional target folder; uploads land here when set. */
-  folderId?: string
+interface ReplaceFormProps {
+  token: string
 }
 
-export function UploadForm({ folderId }: UploadFormProps) {
-  const [state, action, pending] = useActionState<UploadState, FormData>(uploadDocument, undefined)
+export function ReplaceForm({ token }: ReplaceFormProps) {
+  const [state, action, pending] = useActionState<ShareState, FormData>(
+    replaceSharedDocument,
+    undefined,
+  )
   const formRef = useRef<HTMLFormElement>(null)
 
-  // Clear the file input after a successful upload.
   useEffect(() => {
     if (state?.message) formRef.current?.reset()
   }, [state])
@@ -21,10 +22,13 @@ export function UploadForm({ folderId }: UploadFormProps) {
     <form
       ref={formRef}
       action={action}
-      className="rounded-xl border border-dashed border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900"
+      className="mt-6 rounded-lg border border-dashed border-slate-300 p-4 dark:border-slate-700"
     >
-      {folderId && <input type="hidden" name="folderId" value={folderId} />}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <input type="hidden" name="token" value={token} />
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+        Téléverser une nouvelle version
+      </p>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
         <input
           type="file"
           name="file"
@@ -37,19 +41,9 @@ export function UploadForm({ folderId }: UploadFormProps) {
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending && (
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="size-4 animate-spin"
-            >
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="size-4 animate-spin">
               <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-              <path
-                d="M21 12a9 9 0 0 0-9-9"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
           )}
           {pending ? 'Téléversement…' : 'Téléverser'}
