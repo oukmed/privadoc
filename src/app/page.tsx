@@ -8,6 +8,7 @@ import { NewFolderButton } from '@/app/documents/new-folder-button'
 import { SearchSort } from '@/app/documents/search-sort'
 import { DocumentList } from '@/app/documents/document-list'
 import { revokeShare } from '@/app/documents/share-actions'
+import { Brand } from '@/app/brand'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 60 * 5 // 5 minutes
@@ -101,10 +102,8 @@ export default async function Home({
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-900">
-        <span className="text-lg font-bold tracking-tight text-indigo-600 dark:text-indigo-400">
-          PrivaDoc
-        </span>
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
+        <Brand />
         <div className="flex items-center gap-4">
           <span className="hidden text-sm text-slate-500 sm:inline dark:text-slate-400">{user.email}</span>
           <form action={signout}>
@@ -138,7 +137,7 @@ export default async function Home({
         </nav>
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
             {breadcrumbs.at(-1)?.name ?? 'Mes documents'}
           </h1>
           <NewFolderButton parentId={currentFolderId ?? undefined} />

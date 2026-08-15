@@ -45,6 +45,34 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+function badgeStyle(ext: string): string {
+  if (ext === 'pdf')
+    return 'bg-red-50 text-red-600 ring-red-200/70 dark:bg-red-950/40 dark:text-red-400 dark:ring-red-900/50'
+  if (['doc', 'docx', 'txt', 'rtf'].includes(ext))
+    return 'bg-blue-50 text-blue-600 ring-blue-200/70 dark:bg-blue-950/40 dark:text-blue-400 dark:ring-blue-900/50'
+  if (['xls', 'xlsx', 'csv'].includes(ext))
+    return 'bg-emerald-50 text-emerald-600 ring-emerald-200/70 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-900/50'
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'svg'].includes(ext))
+    return 'bg-violet-50 text-violet-600 ring-violet-200/70 dark:bg-violet-950/40 dark:text-violet-400 dark:ring-violet-900/50'
+  if (['zip', 'rar', '7z'].includes(ext))
+    return 'bg-amber-50 text-amber-600 ring-amber-200/70 dark:bg-amber-950/40 dark:text-amber-400 dark:ring-amber-900/50'
+  return 'bg-slate-100 text-slate-500 ring-slate-200/70 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700/60'
+}
+
+function FileBadge({ title }: { title: string }) {
+  const dot = title.lastIndexOf('.')
+  const ext = dot > 0 ? title.slice(dot + 1).toLowerCase() : ''
+  const label = (ext || 'doc').slice(0, 4).toUpperCase()
+  return (
+    <span
+      aria-hidden="true"
+      className={`grid size-9 shrink-0 place-items-center rounded-lg text-[10px] font-bold ring-1 ring-inset ${badgeStyle(ext)}`}
+    >
+      {label}
+    </span>
+  )
+}
+
 function toggleInSet(set: Set<string>, id: string): Set<string> {
   const next = new Set(set)
   if (next.has(id)) next.delete(id)
@@ -139,7 +167,10 @@ export function DocumentList({ folders, documents }: DocumentListProps) {
 
         <ul className="divide-y divide-slate-200 dark:divide-slate-800">
           {folders.map((folder) => (
-            <li key={folder.id} className="flex items-center gap-3 px-4 py-3">
+            <li
+              key={folder.id}
+              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            >
               <input
                 type="checkbox"
                 checked={selectedFolders.has(folder.id)}
@@ -172,7 +203,10 @@ export function DocumentList({ folders, documents }: DocumentListProps) {
           ))}
 
           {documents.map((doc) => (
-            <li key={doc.id} className="flex items-center gap-3 px-4 py-3">
+            <li
+              key={doc.id}
+              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            >
               <input
                 type="checkbox"
                 checked={selectedDocs.has(doc.id)}
@@ -180,6 +214,7 @@ export function DocumentList({ folders, documents }: DocumentListProps) {
                 aria-label={`Sélectionner le document ${doc.title}`}
                 className={rowCheckboxClass}
               />
+              <FileBadge title={doc.title} />
               <div className="min-w-0 flex-1">
                 {doc.signedUrl ? (
                   <a

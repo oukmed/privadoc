@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { ReplaceForm } from './replace-form'
+import { Brand } from '@/app/brand'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 60 * 10 // 10 minutes
@@ -123,9 +124,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const shell = (children: React.ReactNode) => (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
       <header className="border-b border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-900">
-        <span className="text-lg font-bold tracking-tight text-indigo-600 dark:text-indigo-400">
-          PrivaDoc
-        </span>
+        <Brand />
       </header>
       <main className="mx-auto w-full max-w-lg flex-1 px-6 py-16">{children}</main>
     </div>

@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import type { ReactNode } from 'react'
 import type { AuthState } from '@/app/auth/actions'
+import { Brand } from '@/app/brand'
 
 interface AuthFormProps {
   title: string
@@ -27,10 +28,8 @@ export function AuthForm({
   return (
     <main className="flex min-h-full flex-1 items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50 px-4 py-16 dark:from-slate-950 dark:to-indigo-950">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <span className="text-2xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400">
-            PrivaDoc
-          </span>
+        <div className="mb-8 flex justify-center">
+          <Brand />
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-900/5 dark:border-slate-800 dark:bg-slate-900">
