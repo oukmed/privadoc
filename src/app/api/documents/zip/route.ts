@@ -2,6 +2,8 @@ import { zipSync } from 'fflate'
 import { createClient } from '@/lib/supabase/server'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
+const MAX_FILES = 50
+const MAX_TOTAL_BYTES = 200 * 1024 * 1024 // 200 MB — zipSync is in-memory
 
 function jsonError(message: string, status: number): Response {
   return new Response(JSON.stringify({ error: message }), {
@@ -51,6 +53,7 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError('Requête invalide.', 400)
   }
   if (!ids) return jsonError('Aucun document sélectionné.', 400)
+  if (ids.length > MAX_FILES) return jsonError(`Maximum ${MAX_FILES} fichiers par archive.`, 400)
 
   const supabase = await createClient()
   const {
@@ -68,9 +71,14 @@ export async function POST(request: Request): Promise<Response> {
 
   const used = new Set<string>()
   const entries: Record<string, Uint8Array> = {}
+  let totalBytes = 0
   for (const doc of documents) {
     const { data: blob } = await supabase.storage.from(BUCKET).download(doc.storage_path)
     if (!blob) continue
+    totalBytes += blob.size
+    if (totalBytes > MAX_TOTAL_BYTES) {
+      return jsonError('Sélection trop volumineuse (max 200 Mo). Réduis la sélection.', 413)
+    }
     const bytes = new Uint8Array(await blob.arrayBuffer())
     entries[uniqueName(sanitizeName(doc.title), used)] = bytes
   }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ConfirmDialog } from '@/app/documents/confirm-dialog'
+import { RenameFolderButton } from '@/app/documents/rename-folder-button'
 import { ShareDialog } from '@/app/documents/share-dialog'
 import { deleteDocument, deleteSelection } from '@/app/documents/actions'
 import { deleteFolder } from '@/app/folders/actions'
@@ -155,15 +156,18 @@ export function DocumentList({ folders, documents }: DocumentListProps) {
                 </svg>
                 <span className="truncate">{folder.name}</span>
               </Link>
-              <ConfirmDialog
-                triggerLabel="Supprimer"
-                title="Supprimer le dossier"
-                description="Le dossier et ses sous-dossiers seront supprimés. Les documents qu'il contient ne seront pas supprimés mais déplacés à la racine."
-                confirmLabel="Supprimer"
-                action={deleteFolder}
-                hiddenFields={{ id: folder.id }}
-                destructive
-              />
+              <div className="flex shrink-0 items-center gap-3">
+                <RenameFolderButton folderId={folder.id} currentName={folder.name} />
+                <ConfirmDialog
+                  triggerLabel="Supprimer"
+                  title="Supprimer le dossier"
+                  description="Le dossier et ses sous-dossiers seront supprimés. Les documents qu'il contient ne seront pas supprimés mais déplacés à la racine."
+                  confirmLabel="Supprimer"
+                  action={deleteFolder}
+                  hiddenFields={{ id: folder.id }}
+                  destructive
+                />
+              </div>
             </li>
           ))}
 

@@ -16,6 +16,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const MAX_FILE_BYTES = 20 * 1024 * 1024 // 20 MB
 const DAY_MS = 24 * 60 * 60 * 1000
+const EMAIL_RATE_LIMIT_PER_HOUR = 20
 
 type Expiry = '24h' | '7d' | '30d' | 'never'
 type Permission = 'read' | 'write'
@@ -245,6 +246,18 @@ export async function sendShareEmail(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Session expirée, reconnecte-toi.' }
+
+  // Rate limit: cap outgoing share emails per user per hour to prevent abuse of
+  // the sending account. Counted in the DB (RLS-scoped), so it survives restarts.
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const { count } = await supabase
+    .from('shares')
+    .select('id', { count: 'exact', head: true })
+    .not('recipient_email', 'is', null)
+    .gte('created_at', oneHourAgo)
+  if ((count ?? 0) >= EMAIL_RATE_LIMIT_PER_HOUR) {
+    return { error: 'Limite d’envoi atteinte (réessaie dans une heure).' }
+  }
 
   const { share, error } = await createMultiDocShare(supabase, user.id, {
     documentIds,

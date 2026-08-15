@@ -7,6 +7,7 @@ import { UploadForm } from '@/app/documents/upload-form'
 import { NewFolderButton } from '@/app/documents/new-folder-button'
 import { SearchSort } from '@/app/documents/search-sort'
 import { DocumentList } from '@/app/documents/document-list'
+import { revokeShare } from '@/app/documents/share-actions'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 60 * 5 // 5 minutes
@@ -90,6 +91,12 @@ export default async function Home({
     }
   }
 
+  // Active shares (RLS-scoped to the creator) for the revoke panel.
+  const { data: shares } = await supabase
+    .from('shares')
+    .select('id, recipient_email, recipient_role, expires_at')
+    .order('created_at', { ascending: false })
+
   const hasError = foldersError || documentsError
 
   return (
@@ -172,6 +179,40 @@ export default async function Home({
               signedUrl: signedUrls.get(doc.storage_path),
             }))}
           />
+        )}
+
+        {shares && shares.length > 0 && (
+          <details className="mt-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
+              Partages actifs ({shares.length})
+            </summary>
+            <ul className="mt-3 divide-y divide-slate-200 dark:divide-slate-800">
+              {shares.map((share) => (
+                <li key={share.id} className="flex items-center justify-between gap-4 py-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate text-slate-700 dark:text-slate-300">
+                      {share.recipient_email ?? 'Lien de partage'}
+                      {share.recipient_role ? ` · ${share.recipient_role}` : ''}
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      {share.expires_at
+                        ? `Expire le ${new Date(share.expires_at).toLocaleDateString()}`
+                        : "N'expire pas"}
+                    </p>
+                  </div>
+                  <form action={revokeShare}>
+                    <input type="hidden" name="shareId" value={share.id} />
+                    <button
+                      type="submit"
+                      className="shrink-0 text-sm font-medium text-red-600 transition hover:text-red-500 dark:text-red-400"
+                    >
+                      Révoquer
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
       </main>
     </div>
