@@ -5,9 +5,10 @@ import { replaceSharedDocument, type ShareState } from '@/app/documents/share-ac
 
 interface ReplaceFormProps {
   token: string
+  documentId: string
 }
 
-export function ReplaceForm({ token }: ReplaceFormProps) {
+export function ReplaceForm({ token, documentId }: ReplaceFormProps) {
   const [state, action, pending] = useActionState<ShareState, FormData>(
     replaceSharedDocument,
     undefined,
@@ -25,6 +26,7 @@ export function ReplaceForm({ token }: ReplaceFormProps) {
       className="mt-6 rounded-lg border border-dashed border-slate-300 p-4 dark:border-slate-700"
     >
       <input type="hidden" name="token" value={token} />
+      <input type="hidden" name="documentId" value={documentId} />
       <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
         Téléverser une nouvelle version
       </p>

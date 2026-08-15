@@ -81,6 +81,42 @@ export async function uploadDocument(_prevState: UploadState, formData: FormData
   return { message: 'Document ajouté.' }
 }
 
+export async function deleteSelection(formData: FormData): Promise<void> {
+  const documentIds = formData.getAll('documentIds').map(String).filter(Boolean)
+  const folderIds = formData.getAll('folderIds').map(String).filter(Boolean)
+  if (documentIds.length === 0 && folderIds.length === 0) return
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return
+
+  if (documentIds.length > 0) {
+    // Delete only the caller's rows; re-derive storage paths from the deleted
+    // rows rather than trusting any client-supplied path.
+    const { data: deleted } = await supabase
+      .from('documents')
+      .delete()
+      .in('id', documentIds)
+      .eq('owner_id', user.id)
+      .select('storage_path')
+
+    const paths = (deleted ?? []).map((row) => row.storage_path).filter(Boolean)
+    if (paths.length > 0) {
+      await supabase.storage.from(BUCKET).remove(paths)
+    }
+  }
+
+  if (folderIds.length > 0) {
+    // RLS restricts deletion to the caller's folders; children cascade and
+    // documents' folder_id is set null by the FK.
+    await supabase.from('folders').delete().in('id', folderIds)
+  }
+
+  revalidatePath('/')
+}
+
 export async function deleteDocument(formData: FormData): Promise<void> {
   const id = String(formData.get('id') ?? '')
   if (!id) return

@@ -110,29 +110,35 @@ export type Database = {
       shares: {
         Row: {
           id: string
-          document_id: string
+          document_id: string | null
           token: string
           expires_at: string | null
           created_by: string
           permission: string
+          recipient_email: string | null
+          recipient_role: string | null
           created_at: string
         }
         Insert: {
           id?: string
-          document_id: string
+          document_id?: string | null
           token?: string
           expires_at?: string | null
           created_by?: string
           permission?: string
+          recipient_email?: string | null
+          recipient_role?: string | null
           created_at?: string
         }
         Update: {
           id?: string
-          document_id?: string
+          document_id?: string | null
           token?: string
           expires_at?: string | null
           created_by?: string
           permission?: string
+          recipient_email?: string | null
+          recipient_role?: string | null
           created_at?: string
         }
         Relationships: [
@@ -148,6 +154,42 @@ export type Database = {
             columns: ['created_by']
             isOneToOne: false
             referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      share_documents: {
+        Row: {
+          id: string
+          share_id: string
+          document_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          share_id: string
+          document_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          share_id?: string
+          document_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'share_documents_share_id_fkey'
+            columns: ['share_id']
+            isOneToOne: false
+            referencedRelation: 'shares'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'share_documents_document_id_fkey'
+            columns: ['document_id']
+            isOneToOne: false
+            referencedRelation: 'documents'
             referencedColumns: ['id']
           },
         ]

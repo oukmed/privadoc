@@ -3,13 +3,10 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { signout } from '@/app/auth/actions'
-import { deleteDocument } from '@/app/documents/actions'
-import { deleteFolder } from '@/app/folders/actions'
 import { UploadForm } from '@/app/documents/upload-form'
 import { NewFolderButton } from '@/app/documents/new-folder-button'
 import { SearchSort } from '@/app/documents/search-sort'
-import { ConfirmDialog } from '@/app/documents/confirm-dialog'
-import { ShareButton } from '@/app/documents/share-button'
+import { DocumentList } from '@/app/documents/document-list'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 60 * 5 // 5 minutes
@@ -30,22 +27,6 @@ interface Folder {
 
 function param(value: string | string[] | undefined): string {
   return typeof value === 'string' ? value : ''
-}
-
-function formatBytes(bytes: number | null): string {
-  if (!bytes) return '—'
-  const units = ['B', 'KB', 'MB', 'GB']
-  let value = bytes
-  let unit = 0
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024
-    unit++
-  }
-  return `${value.toFixed(value < 10 && unit > 0 ? 1 : 0)} ${units[unit]}`
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function buildBreadcrumbs(folders: Folder[], currentId: string | null): Folder[] {
@@ -173,78 +154,24 @@ export default async function Home({
               {(foldersError ?? documentsError)?.message}
             </span>
           </div>
-        ) : (
+        ) : subfolders.length === 0 && (documents?.length ?? 0) === 0 ? (
           <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-            {subfolders.length === 0 && (documents?.length ?? 0) === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-                {query ? 'Aucun résultat.' : 'Ce dossier est vide. Téléverse un fichier ou crée un dossier.'}
-              </p>
-            ) : (
-              <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-                {subfolders.map((folder) => (
-                  <li key={folder.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                    <Link
-                      href={`/?folder=${folder.id}`}
-                      className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
-                    >
-                      <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="size-4 shrink-0 text-indigo-500">
-                        <path d="M3 6a2 2 0 0 1 2-2h3l2 2h5a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" />
-                      </svg>
-                      <span className="truncate">{folder.name}</span>
-                    </Link>
-                    <ConfirmDialog
-                      triggerLabel="Supprimer"
-                      title="Supprimer le dossier"
-                      description="Le dossier et ses sous-dossiers seront supprimés. Les documents qu'il contient ne seront pas supprimés mais déplacés à la racine."
-                      confirmLabel="Supprimer"
-                      action={deleteFolder}
-                      hiddenFields={{ id: folder.id }}
-                      destructive
-                    />
-                  </li>
-                ))}
-
-                {(documents ?? []).map((doc) => {
-                  const url = signedUrls.get(doc.storage_path)
-                  return (
-                    <li key={doc.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                      <div className="min-w-0">
-                        {url ? (
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="truncate text-sm font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
-                          >
-                            {doc.title}
-                          </a>
-                        ) : (
-                          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                            {doc.title}
-                          </p>
-                        )}
-                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                          {formatBytes(doc.size_bytes)} · {formatDate(doc.created_at)}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-3">
-                        <ShareButton documentId={doc.id} />
-                        <ConfirmDialog
-                          triggerLabel="Supprimer"
-                          title="Supprimer le document"
-                          description="Cette action est définitive. Le fichier sera retiré de ton espace de stockage."
-                          confirmLabel="Supprimer"
-                          action={deleteDocument}
-                          hiddenFields={{ id: doc.id }}
-                          destructive
-                        />
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
+            <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+              {query ? 'Aucun résultat.' : 'Ce dossier est vide. Téléverse un fichier ou crée un dossier.'}
+            </p>
           </div>
+        ) : (
+          <DocumentList
+            folders={subfolders.map((folder) => ({ id: folder.id, name: folder.name }))}
+            documents={(documents ?? []).map((doc) => ({
+              id: doc.id,
+              title: doc.title,
+              storagePath: doc.storage_path,
+              sizeBytes: doc.size_bytes,
+              createdAt: doc.created_at,
+              signedUrl: signedUrls.get(doc.storage_path),
+            }))}
+          />
         )}
       </main>
     </div>
