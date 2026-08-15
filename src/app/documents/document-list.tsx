@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ConfirmDialog } from '@/app/documents/confirm-dialog'
-import { RenameFolderButton } from '@/app/documents/rename-folder-button'
+import { RenameDialog } from '@/app/documents/rename-dialog'
 import { ShareDialog } from '@/app/documents/share-dialog'
-import { deleteDocument, deleteSelection } from '@/app/documents/actions'
-import { deleteFolder } from '@/app/folders/actions'
+import { deleteDocument, deleteSelection, renameDocument } from '@/app/documents/actions'
+import { deleteFolder, renameFolder } from '@/app/folders/actions'
 
 interface FolderItem {
   id: string
@@ -157,7 +157,7 @@ export function DocumentList({ folders, documents }: DocumentListProps) {
                 <span className="truncate">{folder.name}</span>
               </Link>
               <div className="flex shrink-0 items-center gap-3">
-                <RenameFolderButton folderId={folder.id} currentName={folder.name} />
+                <RenameDialog action={renameFolder} id={folder.id} currentName={folder.name} noun="dossier" />
                 <ConfirmDialog
                   triggerLabel="Supprimer"
                   title="Supprimer le dossier"
@@ -205,6 +205,7 @@ export function DocumentList({ folders, documents }: DocumentListProps) {
                 >
                   Partager
                 </button>
+                <RenameDialog action={renameDocument} id={doc.id} currentName={doc.title} noun="document" />
                 <ConfirmDialog
                   triggerLabel="Supprimer"
                   title="Supprimer le document"

@@ -1,14 +1,17 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { renameFolder } from '@/app/folders/actions'
 
-interface RenameFolderButtonProps {
-  folderId: string
+interface RenameDialogProps {
+  /** Server action bound to the form; receives `id` + `name`. */
+  action: (formData: FormData) => void | Promise<void>
+  id: string
   currentName: string
+  /** e.g. "dossier" or "document" — used in the title and label. */
+  noun: string
 }
 
-export function RenameFolderButton({ folderId, currentName }: RenameFolderButtonProps) {
+export function RenameDialog({ action, id, currentName, noun }: RenameDialogProps) {
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -19,7 +22,7 @@ export function RenameFolderButton({ folderId, currentName }: RenameFolderButton
   // Await the action, then close (closing first would unmount the form and
   // cancel the pending server action).
   async function handleRename(formData: FormData): Promise<void> {
-    await renameFolder(formData)
+    await action(formData)
     setOpen(false)
   }
 
@@ -43,23 +46,23 @@ export function RenameFolderButton({ folderId, currentName }: RenameFolderButton
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Renommer le dossier"
+            aria-label={`Renommer le ${noun}`}
             className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
           >
             <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
-              Renommer le dossier
+              Renommer le {noun}
             </h2>
             <form action={handleRename} className="mt-4">
-              <input type="hidden" name="id" value={folderId} />
+              <input type="hidden" name="id" value={id} />
               <label htmlFor="rename-input" className="sr-only">
-                Nom du dossier
+                Nouveau nom
               </label>
               <input
                 id="rename-input"
                 ref={inputRef}
                 name="name"
                 required
-                maxLength={100}
+                maxLength={255}
                 defaultValue={currentName}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
               />

@@ -143,3 +143,15 @@ export async function deleteDocument(formData: FormData): Promise<void> {
 
   revalidatePath('/')
 }
+
+export async function renameDocument(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '')
+  const title = String(formData.get('name') ?? '').trim()
+  if (!id || title.length < 1 || title.length > 255) return
+
+  const supabase = await createClient()
+  // RLS restricts the update to the caller's own document.
+  await supabase.from('documents').update({ title }).eq('id', id)
+
+  revalidatePath('/')
+}
