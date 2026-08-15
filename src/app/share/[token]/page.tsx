@@ -158,7 +158,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   return shell(
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
           {items.length > 1 ? `${items.length} documents partagés` : 'Document partagé'}
         </p>
         <span

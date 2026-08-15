@@ -193,7 +193,7 @@ export default async function Home({
                       {share.recipient_email ?? 'Lien de partage'}
                       {share.recipient_role ? ` · ${share.recipient_role}` : ''}
                     </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {share.expires_at
                         ? `Expire le ${new Date(share.expires_at).toLocaleDateString()}`
                         : "N'expire pas"}
