@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 /**
  * Result returned by the auth Server Actions to drive `useActionState`.
@@ -67,21 +67,18 @@ export async function signup(_prevState: AuthState, formData: FormData): Promise
   const validationError = validate(email, password)
   if (validationError) return { error: validationError }
 
-  const supabase = await createClient()
-  const { data, error } = await supabase.auth.signUp({
+  // Create the account already confirmed (server-side, admin) so signup never
+  // depends on Supabase's confirmation email / SMTP, then sign in immediately.
+  const { error: createError } = await createAdminClient().auth.admin.createUser({
     email,
     password,
-    options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm`,
-    },
+    email_confirm: true,
   })
+  if (createError) return { error: translateAuthError(createError.message) }
 
-  if (error) return { error: translateAuthError(error.message) }
-
-  // When email confirmation is enabled, no session is returned yet.
-  if (!data.session) {
-    return { message: 'Vérifie ta boîte mail pour confirmer ton adresse, puis connecte-toi.' }
-  }
+  const supabase = await createClient()
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+  if (signInError) return { error: translateAuthError(signInError.message) }
 
   revalidatePath('/', 'layout')
   redirect('/')
