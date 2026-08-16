@@ -122,14 +122,19 @@ export async function inviteCollaborator(
     }
   }
 
+  // Uniform key set on every row: PostgREST rejects a bulk insert whose objects
+  // don't all share the same columns.
   const accessRows = [
     ...documentIds.map((id) => ({
       collaborator_id: collaborator.id,
       document_id: id,
+      folder_id: null,
       expires_at: expiresAt,
+      permission: 'read',
     })),
     ...folderIds.map((id) => ({
       collaborator_id: collaborator.id,
+      document_id: null,
       folder_id: id,
       expires_at: expiresAt,
       permission: folderPermission,
