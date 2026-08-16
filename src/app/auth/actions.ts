@@ -33,6 +33,19 @@ function validate(email: string, password: string): string | null {
   return null
 }
 
+/** Map common Supabase auth errors (English) to French user-facing messages. */
+function translateAuthError(message: string): string {
+  const m = message.toLowerCase()
+  if (m.includes('invalid login credentials')) return 'Email ou mot de passe incorrect.'
+  if (m.includes('email not confirmed')) return 'Adresse email non confirmée. Vérifie ta boîte mail.'
+  if (m.includes('already registered') || m.includes('already been registered')) {
+    return 'Un compte existe déjà avec cet email.'
+  }
+  if (m.includes('rate limit')) return 'Trop de tentatives. Réessaie dans quelques minutes.'
+  if (m.includes('password')) return 'Mot de passe invalide (au moins 8 caractères).'
+  return 'Une erreur est survenue. Réessaie.'
+}
+
 export async function login(_prevState: AuthState, formData: FormData): Promise<AuthState> {
   const { email, password } = readCredentials(formData)
 
@@ -42,7 +55,7 @@ export async function login(_prevState: AuthState, formData: FormData): Promise<
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
-  if (error) return { error: error.message }
+  if (error) return { error: translateAuthError(error.message) }
 
   revalidatePath('/', 'layout')
   redirect('/')
@@ -63,7 +76,7 @@ export async function signup(_prevState: AuthState, formData: FormData): Promise
     },
   })
 
-  if (error) return { error: error.message }
+  if (error) return { error: translateAuthError(error.message) }
 
   // When email confirmation is enabled, no session is returned yet.
   if (!data.session) {
