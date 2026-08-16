@@ -169,25 +169,27 @@ export function DocumentList({ folders, documents }: DocumentListProps) {
           {folders.map((folder) => (
             <li
               key={folder.id}
-              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40"
+              className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center sm:gap-3 dark:hover:bg-slate-800/40"
             >
-              <input
-                type="checkbox"
-                checked={selectedFolders.has(folder.id)}
-                onChange={() => setSelectedFolders((prev) => toggleInSet(prev, folder.id))}
-                aria-label={`Sélectionner le dossier ${folder.name}`}
-                className={rowCheckboxClass}
-              />
-              <Link
-                href={`/?folder=${folder.id}`}
-                className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
-              >
-                <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="size-4 shrink-0 text-indigo-500">
-                  <path d="M3 6a2 2 0 0 1 2-2h3l2 2h5a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" />
-                </svg>
-                <span className="truncate">{folder.name}</span>
-              </Link>
-              <div className="flex shrink-0 items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3 sm:flex-1">
+                <input
+                  type="checkbox"
+                  checked={selectedFolders.has(folder.id)}
+                  onChange={() => setSelectedFolders((prev) => toggleInSet(prev, folder.id))}
+                  aria-label={`Sélectionner le dossier ${folder.name}`}
+                  className={rowCheckboxClass}
+                />
+                <Link
+                  href={`/?folder=${folder.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="size-4 shrink-0 text-indigo-500">
+                    <path d="M3 6a2 2 0 0 1 2-2h3l2 2h5a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" />
+                  </svg>
+                  <span className="truncate">{folder.name}</span>
+                </Link>
+              </div>
+              <div className="flex shrink-0 items-center gap-4 self-end sm:self-auto">
                 <RenameDialog action={renameFolder} id={folder.id} currentName={folder.name} noun="dossier" />
                 <ConfirmDialog
                   triggerLabel="Supprimer"
@@ -205,34 +207,40 @@ export function DocumentList({ folders, documents }: DocumentListProps) {
           {documents.map((doc) => (
             <li
               key={doc.id}
-              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40"
+              className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center sm:gap-3 dark:hover:bg-slate-800/40"
             >
-              <input
-                type="checkbox"
-                checked={selectedDocs.has(doc.id)}
-                onChange={() => setSelectedDocs((prev) => toggleInSet(prev, doc.id))}
-                aria-label={`Sélectionner le document ${doc.title}`}
-                className={rowCheckboxClass}
-              />
-              <FileBadge title={doc.title} />
-              <div className="min-w-0 flex-1">
-                {doc.signedUrl ? (
-                  <a
-                    href={doc.signedUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="truncate text-sm font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
-                  >
-                    {doc.title}
-                  </a>
-                ) : (
-                  <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{doc.title}</p>
-                )}
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  {formatBytes(doc.sizeBytes)} · {formatDate(doc.createdAt)}
-                </p>
+              <div className="flex min-w-0 items-center gap-3 sm:flex-1">
+                <input
+                  type="checkbox"
+                  checked={selectedDocs.has(doc.id)}
+                  onChange={() => setSelectedDocs((prev) => toggleInSet(prev, doc.id))}
+                  aria-label={`Sélectionner le document ${doc.title}`}
+                  className={rowCheckboxClass}
+                />
+                <FileBadge title={doc.title} />
+                <div className="min-w-0 flex-1">
+                  {doc.signedUrl ? (
+                    <a
+                      href={doc.signedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block truncate text-sm font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
+                    >
+                      {doc.title}
+                    </a>
+                  ) : (
+                    <p className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {doc.title}
+                    </p>
+                  )}
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="whitespace-nowrap">{formatBytes(doc.sizeBytes)}</span>
+                    {' · '}
+                    <span className="whitespace-nowrap">{formatDate(doc.createdAt)}</span>
+                  </p>
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
+              <div className="flex shrink-0 items-center gap-4 self-end sm:self-auto">
                 <button
                   type="button"
                   onClick={() => setShareTargets([doc.id])}
