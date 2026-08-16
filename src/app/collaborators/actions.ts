@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email'
 import { RECIPIENT_ROLES, ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 
@@ -103,6 +103,23 @@ export async function inviteCollaborator(
 
   if (upsertError || !collaborator) return { error: "Impossible d'enregistrer le collaborateur." }
 
+  // Link the invitee's account if it already exists — the signup trigger only
+  // fires for accounts created AFTER the invite, so an already-registered user
+  // would otherwise never be linked.
+  // ponytail: listUsers is paginated (1000/page); fine at this scale.
+  let linkedUserId = collaborator.user_id
+  if (!linkedUserId) {
+    const { data: list } = await createAdminClient().auth.admin.listUsers({ perPage: 1000 })
+    const match = list?.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())
+    if (match) {
+      linkedUserId = match.id
+      await supabase
+        .from('collaborators')
+        .update({ user_id: match.id, accepted_at: new Date().toISOString() })
+        .eq('id', collaborator.id)
+    }
+  }
+
   const accessRows = [
     ...documentIds.map((id) => ({
       collaborator_id: collaborator.id,
@@ -124,7 +141,8 @@ export async function inviteCollaborator(
 
   // Notify the collaborator via our own (Gmail) mailer — the access is already
   // granted, so a delivery failure is surfaced but not fatal.
-  const target = collaborator.user_id ? `${APP_URL}/login` : `${APP_URL}/signup`
+  const existing = Boolean(linkedUserId)
+  const target = existing ? `${APP_URL}/login` : `${APP_URL}/signup`
   const { error: emailError } = await sendEmail({
     to: email,
     subject: `${user.email ?? 'Un utilisateur'} vous partage des documents sur PrivaDoc`,
@@ -132,7 +150,7 @@ export async function inviteCollaborator(
       inviterEmail: user.email ?? 'Un utilisateur',
       role,
       url: target,
-      existing: Boolean(collaborator.user_id),
+      existing,
     }),
   })
   if (emailError) {
