@@ -2,34 +2,11 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { registerDocument } from '@/app/documents/actions'
+import { uploadDocumentFile } from '@/app/documents/upload-client'
 
 interface UploadFormProps {
   /** Optional target folder; uploads land here when set. */
   folderId?: string
-}
-
-const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
-const MAX_FILE_BYTES = 20 * 1024 * 1024 // 20 MB
-
-const DANGEROUS_CONTENT_TYPES = new Set([
-  'text/html',
-  'application/xhtml+xml',
-  'image/svg+xml',
-  'application/xml',
-  'text/xml',
-])
-
-function safeContentType(type: string): string {
-  return !type || DANGEROUS_CONTENT_TYPES.has(type.toLowerCase()) ? 'application/octet-stream' : type
-}
-
-function fileExtension(name: string): string {
-  const dot = name.lastIndexOf('.')
-  if (dot <= 0) return ''
-  const ext = name.slice(dot + 1).toLowerCase()
-  return /^[a-z0-9]{1,12}$/.test(ext) ? `.${ext}` : ''
 }
 
 export function UploadForm({ folderId }: UploadFormProps) {
@@ -39,8 +16,6 @@ export function UploadForm({ folderId }: UploadFormProps) {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
-  // Upload straight from the browser to Supabase Storage (no Vercel function in
-  // the file path → no 1MB/timeout limits), then record the row server-side.
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
     setError(null)
@@ -52,45 +27,14 @@ export function UploadForm({ folderId }: UploadFormProps) {
       setError('Choisis un fichier à téléverser.')
       return
     }
-    if (file.size > MAX_FILE_BYTES) {
-      setError('Fichier trop volumineux (max 20 Mo).')
-      return
-    }
 
     setPending(true)
     try {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        setError('Session expirée, reconnecte-toi.')
-        return
-      }
-
-      const contentType = safeContentType(file.type)
-      const path = `${user.id}/${crypto.randomUUID()}${fileExtension(file.name)}`
-
-      const { error: uploadError } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, file, { contentType, upsert: false })
-      if (uploadError) {
-        setError('Le téléversement a échoué : ' + uploadError.message)
-        return
-      }
-
-      const result = await registerDocument({
-        title: file.name,
-        storagePath: path,
-        mimeType: contentType,
-        sizeBytes: file.size,
-        folderId,
-      })
+      const result = await uploadDocumentFile(file, file.name, folderId)
       if (result?.error) {
         setError(result.error)
         return
       }
-
       setMessage('Document ajouté.')
       formRef.current?.reset()
       router.refresh()
@@ -122,12 +66,7 @@ export function UploadForm({ folderId }: UploadFormProps) {
           {pending && (
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="size-4 animate-spin">
               <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-              <path
-                d="M21 12a9 9 0 0 0-9-9"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
           )}
           {pending ? 'Téléversement…' : 'Téléverser'}

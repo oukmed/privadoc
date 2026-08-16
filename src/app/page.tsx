@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { signout } from '@/app/auth/actions'
 import { UploadForm } from '@/app/documents/upload-form'
+import { ScanButton } from '@/app/documents/scan-button'
 import { NewFolderButton } from '@/app/documents/new-folder-button'
 import { SearchSort } from '@/app/documents/search-sort'
 import { DocumentList } from '@/app/documents/document-list'
@@ -176,8 +177,9 @@ export default async function Home({
           <NewFolderButton parentId={currentFolderId ?? undefined} />
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-col gap-3">
           <UploadForm folderId={currentFolderId ?? undefined} />
+          <ScanButton folderId={currentFolderId ?? undefined} />
         </div>
 
         <div className="mt-6">
