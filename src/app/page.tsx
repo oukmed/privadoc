@@ -70,6 +70,7 @@ export default async function Home({
   let documentsQuery = supabase
     .from('documents')
     .select('id, title, storage_path, size_bytes, created_at')
+    .eq('owner_id', user.id)
   documentsQuery = currentFolderId
     ? documentsQuery.eq('folder_id', currentFolderId)
     : documentsQuery.is('folder_id', null)
@@ -82,8 +83,15 @@ export default async function Home({
   const subfolders = folders.filter((f) => (f.parent_id ?? null) === currentFolderId)
   const breadcrumbs = buildBreadcrumbs(folders, currentFolderId)
 
-  // Batch-create short-lived signed URLs for the download links.
-  const paths = (documents ?? []).map((d) => d.storage_path)
+  // Documents shared WITH the current user (returned by the additive RLS grant policy).
+  const { data: sharedDocs } = await supabase
+    .from('documents')
+    .select('id, title, storage_path, size_bytes, created_at')
+    .neq('owner_id', user.id)
+    .order('created_at', { ascending: false })
+
+  // Batch-create short-lived signed URLs for the download links (owned + shared).
+  const paths = [...(documents ?? []), ...(sharedDocs ?? [])].map((d) => d.storage_path)
   const signedUrls = new Map<string, string>()
   if (paths.length > 0) {
     const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_TTL)
@@ -105,6 +113,12 @@ export default async function Home({
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
         <Brand />
         <div className="flex items-center gap-4">
+          <Link
+            href="/collaborators"
+            className="text-sm font-medium text-slate-600 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
+          >
+            Collaborateurs
+          </Link>
           <span className="hidden text-sm text-slate-500 sm:inline dark:text-slate-400">{user.email}</span>
           <form action={signout}>
             <button
@@ -160,7 +174,7 @@ export default async function Home({
               {(foldersError ?? documentsError)?.message}
             </span>
           </div>
-        ) : subfolders.length === 0 && (documents?.length ?? 0) === 0 ? (
+        ) : subfolders.length === 0 && (documents?.length ?? 0) === 0 && (sharedDocs?.length ?? 0) === 0 ? (
           <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
               {query ? 'Aucun résultat.' : 'Ce dossier est vide. Téléverse un fichier ou crée un dossier.'}
@@ -170,6 +184,14 @@ export default async function Home({
           <DocumentList
             folders={subfolders.map((folder) => ({ id: folder.id, name: folder.name }))}
             documents={(documents ?? []).map((doc) => ({
+              id: doc.id,
+              title: doc.title,
+              storagePath: doc.storage_path,
+              sizeBytes: doc.size_bytes,
+              createdAt: doc.created_at,
+              signedUrl: signedUrls.get(doc.storage_path),
+            }))}
+            sharedDocuments={(sharedDocs ?? []).map((doc) => ({
               id: doc.id,
               title: doc.title,
               storagePath: doc.storage_path,

@@ -194,6 +194,103 @@ export type Database = {
           },
         ]
       }
+      collaborators: {
+        Row: {
+          id: string
+          owner_id: string
+          email: string
+          role: string
+          user_id: string | null
+          invited_at: string
+          accepted_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id?: string
+          email: string
+          role: string
+          user_id?: string | null
+          invited_at?: string
+          accepted_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          email?: string
+          role?: string
+          user_id?: string | null
+          invited_at?: string
+          accepted_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'collaborators_owner_id_fkey'
+            columns: ['owner_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'collaborators_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      collaborator_access: {
+        Row: {
+          id: string
+          collaborator_id: string
+          document_id: string | null
+          folder_id: string | null
+          expires_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          collaborator_id: string
+          document_id?: string | null
+          folder_id?: string | null
+          expires_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          collaborator_id?: string
+          document_id?: string | null
+          folder_id?: string | null
+          expires_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'collaborator_access_collaborator_id_fkey'
+            columns: ['collaborator_id']
+            isOneToOne: false
+            referencedRelation: 'collaborators'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'collaborator_access_document_id_fkey'
+            columns: ['document_id']
+            isOneToOne: false
+            referencedRelation: 'documents'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'collaborator_access_folder_id_fkey'
+            columns: ['folder_id']
+            isOneToOne: false
+            referencedRelation: 'folders'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

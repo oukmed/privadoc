@@ -25,6 +25,7 @@ interface DocumentItem {
 interface DocumentListProps {
   folders: FolderItem[]
   documents: DocumentItem[]
+  sharedDocuments?: DocumentItem[]
 }
 
 const ZIP_ENDPOINT = '/api/documents/zip'
@@ -82,7 +83,7 @@ function toggleInSet(set: Set<string>, id: string): Set<string> {
 
 const rowCheckboxClass = 'size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600'
 
-export function DocumentList({ folders, documents }: DocumentListProps) {
+export function DocumentList({ folders, documents, sharedDocuments }: DocumentListProps) {
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set())
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set())
   const [shareTargets, setShareTargets] = useState<string[] | null>(null)
@@ -148,6 +149,47 @@ export function DocumentList({ folders, documents }: DocumentListProps) {
 
   return (
     <>
+      {sharedDocuments && sharedDocuments.length > 0 && (
+        <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-950/40">
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Partagé avec moi
+            </span>
+          </div>
+          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+            {sharedDocuments.map((doc) => (
+              <li
+                key={doc.id}
+                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40"
+              >
+                <FileBadge title={doc.title} />
+                <div className="min-w-0 flex-1">
+                  {doc.signedUrl ? (
+                    <a
+                      href={doc.signedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block truncate text-sm font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400"
+                    >
+                      {doc.title}
+                    </a>
+                  ) : (
+                    <p className="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {doc.title}
+                    </p>
+                  )}
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="whitespace-nowrap">{formatBytes(doc.sizeBytes)}</span>
+                    {' · '}
+                    <span className="whitespace-nowrap">{formatDate(doc.createdAt)}</span>
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-950/40">
           <input
