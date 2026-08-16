@@ -60,7 +60,7 @@ export function AuthForm({
                 htmlFor="password"
                 className="block text-sm font-medium text-slate-700 dark:text-slate-300"
               >
-                Password
+                Mot de passe
               </label>
               <input
                 id="password"
@@ -97,7 +97,7 @@ export function AuthForm({
               disabled={pending}
               className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-slate-900"
             >
-              {pending ? 'Please wait…' : submitLabel}
+              {pending ? 'Veuillez patienter…' : submitLabel}
             </button>
           </form>
         </div>

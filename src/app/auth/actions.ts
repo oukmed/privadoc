@@ -25,10 +25,10 @@ function readCredentials(formData: FormData): { email: string; password: string 
 }
 
 function validate(email: string, password: string): string | null {
-  if (!email || !password) return 'Email and password are required.'
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Please enter a valid email address.'
+  if (!email || !password) return 'Email et mot de passe requis.'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Adresse email invalide.'
   if (password.length < MIN_PASSWORD_LENGTH) {
-    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`
+    return `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`
   }
   return null
 }
@@ -67,7 +67,7 @@ export async function signup(_prevState: AuthState, formData: FormData): Promise
 
   // When email confirmation is enabled, no session is returned yet.
   if (!data.session) {
-    return { message: 'Check your inbox to confirm your email, then sign in.' }
+    return { message: 'Vérifie ta boîte mail pour confirmer ton adresse, puis connecte-toi.' }
   }
 
   revalidatePath('/', 'layout')

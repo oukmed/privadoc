@@ -3,25 +3,25 @@ import { AuthForm } from '@/app/auth/auth-form'
 import { signup } from '@/app/auth/actions'
 
 export const metadata = {
-  title: 'Create account · PrivaDoc',
+  title: 'Créer un compte · PrivaDoc',
 }
 
 export default function SignupPage() {
   return (
     <AuthForm
-      title="Create your account"
-      subtitle="Start storing documents privately."
-      submitLabel="Create account"
+      title="Créer ton compte"
+      subtitle="Commence à stocker tes documents en privé."
+      submitLabel="Créer le compte"
       action={signup}
       passwordAutoComplete="new-password"
       footer={
         <>
-          Already have an account?{' '}
+          Déjà un compte ?{' '}
           <Link
             href="/login"
             className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
           >
-            Sign in
+            Se connecter
           </Link>
         </>
       }
