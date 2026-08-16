@@ -1,8 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { RECIPIENT_ROLES, type RecipientRole } from '@/lib/roles'
+import { createClient } from '@/lib/supabase/server'
+import { sendEmail } from '@/lib/email'
+import { RECIPIENT_ROLES, ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 
 export type CollaboratorState = { error?: string; message?: string } | undefined
 
@@ -26,6 +27,36 @@ function expiresAtFor(expiry: Expiry): string | null {
 
 function parseRole(value: string): RecipientRole {
   return (RECIPIENT_ROLES as readonly string[]).includes(value) ? (value as RecipientRole) : 'autre'
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+  )
+}
+
+function inviteEmailHtml(args: {
+  inviterEmail: string
+  role: RecipientRole
+  url: string
+  existing: boolean
+}): string {
+  const cta = args.existing ? 'Se connecter' : 'Créer mon compte'
+  const hint = args.existing
+    ? 'Connectez-vous avec cette adresse email pour retrouver les documents dans « Partagé avec moi ».'
+    : 'Créez un compte avec cette adresse email — les documents apparaîtront automatiquement dans « Partagé avec moi ».'
+  return `
+    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;margin:0 auto">
+      <p style="font-size:18px;font-weight:600;color:#0f172a;margin:0 0 16px">Documents partagés avec vous</p>
+      <p style="margin:0 0 8px;color:#334155;font-size:15px;line-height:1.6">
+        <strong>${escapeHtml(args.inviterEmail)}</strong> vous a ajouté comme collaborateur
+        (${escapeHtml(ROLE_LABELS[args.role])}) sur PrivaDoc.
+      </p>
+      <p style="margin:0 0 24px;color:#334155;font-size:15px;line-height:1.6">${hint}</p>
+      <a href="${args.url}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:8px">${cta}</a>
+      <p style="margin:24px 0 0;color:#94a3b8;font-size:12px;word-break:break-all">${escapeHtml(args.url)}</p>
+    </div>`
 }
 
 export async function inviteCollaborator(
@@ -72,17 +103,6 @@ export async function inviteCollaborator(
 
   if (upsertError || !collaborator) return { error: "Impossible d'enregistrer le collaborateur." }
 
-  // Send the auth invite only when the email has no account yet. An
-  // "already registered" response is soft-handled: the access rows still apply.
-  if (!collaborator.user_id) {
-    const { error: inviteError } = await createAdminClient().auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${APP_URL}/login`,
-    })
-    if (inviteError && !/already/i.test(inviteError.message)) {
-      return { error: "L'invitation n'a pas pu être envoyée." }
-    }
-  }
-
   const accessRows = [
     ...documentIds.map((id) => ({
       collaborator_id: collaborator.id,
@@ -101,6 +121,24 @@ export async function inviteCollaborator(
   if (accessError) return { error: "Impossible d'accorder l'accès aux documents." }
 
   revalidatePath('/collaborators')
+
+  // Notify the collaborator via our own (Gmail) mailer — the access is already
+  // granted, so a delivery failure is surfaced but not fatal.
+  const target = collaborator.user_id ? `${APP_URL}/login` : `${APP_URL}/signup`
+  const { error: emailError } = await sendEmail({
+    to: email,
+    subject: `${user.email ?? 'Un utilisateur'} vous partage des documents sur PrivaDoc`,
+    html: inviteEmailHtml({
+      inviterEmail: user.email ?? 'Un utilisateur',
+      role,
+      url: target,
+      existing: Boolean(collaborator.user_id),
+    }),
+  })
+  if (emailError) {
+    return { error: `Accès accordé, mais l'email n'a pas pu être envoyé : ${emailError}` }
+  }
+
   return { message: `Invitation envoyée à ${email}.` }
 }
 
