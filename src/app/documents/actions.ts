@@ -81,6 +81,46 @@ export async function uploadDocument(_prevState: UploadState, formData: FormData
   return { message: 'Document ajouté.' }
 }
 
+/**
+ * Registers a documents row after the BROWSER uploaded the file straight to
+ * Supabase Storage (bypasses the Vercel function size/timeout limits). The file
+ * never transits the server here — only its metadata.
+ */
+export async function registerDocument(input: {
+  title: string
+  storagePath: string
+  mimeType: string
+  sizeBytes: number
+  folderId?: string | null
+}): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Session expirée, reconnecte-toi.' }
+
+  // The object must live under the caller's own folder prefix.
+  if (!input.storagePath.startsWith(`${user.id}/`)) return { error: 'Chemin invalide.' }
+
+  const { error } = await supabase.from('documents').insert({
+    owner_id: user.id,
+    title: input.title.slice(0, 255),
+    storage_path: input.storagePath,
+    mime_type: input.mimeType,
+    size_bytes: input.sizeBytes,
+    ...(input.folderId ? { folder_id: input.folderId } : {}),
+  })
+
+  if (error) {
+    // Roll back the uploaded object so storage and the table stay consistent.
+    await supabase.storage.from(BUCKET).remove([input.storagePath])
+    return { error: error.message }
+  }
+
+  revalidatePath('/')
+  return {}
+}
+
 export async function deleteSelection(formData: FormData): Promise<void> {
   const documentIds = formData.getAll('documentIds').map(String).filter(Boolean)
   const folderIds = formData.getAll('folderIds').map(String).filter(Boolean)
