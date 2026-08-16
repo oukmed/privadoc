@@ -218,6 +218,18 @@ export function InviteDialog({ documents, folders }: InviteDialogProps) {
                   </div>
                 </fieldset>
 
+                <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    name="canWrite"
+                    className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>
+                    Autoriser ce collaborateur à <strong>déposer</strong> des documents dans les
+                    dossiers partagés
+                  </span>
+                </label>
+
                 <button
                   type="submit"
                   disabled={pending}

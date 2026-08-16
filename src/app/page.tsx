@@ -9,6 +9,7 @@ import { SearchSort } from '@/app/documents/search-sort'
 import { DocumentList } from '@/app/documents/document-list'
 import { revokeShare } from '@/app/documents/share-actions'
 import { Brand } from '@/app/brand'
+import { ReturnUpload, type ReturnTarget } from '@/app/collaborators/return-upload'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 60 * 5 // 5 minutes
@@ -69,7 +70,7 @@ export default async function Home({
 
   let documentsQuery = supabase
     .from('documents')
-    .select('id, title, storage_path, size_bytes, created_at')
+    .select('id, title, storage_path, size_bytes, created_at, uploaded_by')
     .eq('owner_id', user.id)
   documentsQuery = currentFolderId
     ? documentsQuery.eq('folder_id', currentFolderId)
@@ -105,6 +106,24 @@ export default async function Home({
     .from('shares')
     .select('id, recipient_email, recipient_role, expires_at')
     .order('created_at', { ascending: false })
+
+  // Owners this user collaborates with + folders they may deposit into, for the
+  // "send a document back" control.
+  const { data: myLinks } = await supabase
+    .from('collaborators')
+    .select('id, owner_id')
+    .eq('user_id', user.id)
+  const { data: writeGrants } = await supabase
+    .from('collaborator_access')
+    .select('collaborator_id, folder_id')
+    .eq('permission', 'write')
+  const folderName = new Map(folders.map((f) => [f.id, f.name]))
+  const returnTargets: ReturnTarget[] = (myLinks ?? []).map((link) => ({
+    ownerId: link.owner_id,
+    folders: (writeGrants ?? [])
+      .filter((g) => g.collaborator_id === link.id && g.folder_id && folderName.has(g.folder_id))
+      .map((g) => ({ id: g.folder_id as string, name: folderName.get(g.folder_id as string) as string })),
+  }))
 
   const hasError = foldersError || documentsError
 
@@ -167,6 +186,8 @@ export default async function Home({
           </Suspense>
         </div>
 
+        <ReturnUpload targets={returnTargets} />
+
         {hasError ? (
           <div className="mt-8 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
             Impossible de charger les données. As-tu exécuté la dernière migration SQL (dossiers) ?
@@ -190,6 +211,7 @@ export default async function Home({
               sizeBytes: doc.size_bytes,
               createdAt: doc.created_at,
               signedUrl: signedUrls.get(doc.storage_path),
+              received: Boolean(doc.uploaded_by),
             }))}
             sharedDocuments={(sharedDocs ?? []).map((doc) => ({
               id: doc.id,

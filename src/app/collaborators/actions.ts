@@ -75,6 +75,8 @@ export async function inviteCollaborator(
   if (documentIds.length === 0 && folderIds.length === 0) {
     return { error: 'Sélectionne au moins un document ou un dossier.' }
   }
+  // Grant deposit (write) permission on the shared FOLDERS when requested.
+  const folderPermission = String(formData.get('canWrite') ?? '') === 'on' ? 'write' : 'read'
 
   const supabase = await createClient()
   const {
@@ -130,6 +132,7 @@ export async function inviteCollaborator(
       collaborator_id: collaborator.id,
       folder_id: id,
       expires_at: expiresAt,
+      permission: folderPermission,
     })),
   ]
 
@@ -180,4 +183,74 @@ export async function removeCollaborator(formData: FormData): Promise<void> {
   await supabase.from('collaborators').delete().eq('id', collaboratorId)
 
   revalidatePath('/collaborators')
+}
+
+const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
+const MAX_FILE_BYTES = 20 * 1024 * 1024
+const DANGEROUS_TYPES = new Set([
+  'text/html',
+  'application/xhtml+xml',
+  'image/svg+xml',
+  'application/xml',
+  'text/xml',
+])
+
+function safeContentType(type: string): string {
+  return !type || DANGEROUS_TYPES.has(type.toLowerCase()) ? 'application/octet-stream' : type
+}
+
+function fileExtension(name: string): string {
+  const dot = name.lastIndexOf('.')
+  if (dot <= 0) return ''
+  const ext = name.slice(dot + 1).toLowerCase()
+  return /^[a-z0-9]{1,12}$/.test(ext) ? `.${ext}` : ''
+}
+
+/**
+ * A collaborator sends a document back to an owner. RLS is the gate: the storage
+ * + documents INSERT policies only allow it for an active collaborator (folder
+ * deposit requires write access; folderId omitted = the owner's inbox).
+ */
+export async function uploadForOwner(
+  _prevState: CollaboratorState,
+  formData: FormData,
+): Promise<CollaboratorState> {
+  const ownerId = String(formData.get('ownerId') ?? '').trim()
+  const folderId = String(formData.get('folderId') ?? '').trim() || null
+  const file = formData.get('file')
+
+  if (!ownerId) return { error: 'Destinataire manquant.' }
+  if (!(file instanceof File) || file.size === 0) return { error: 'Choisis un fichier à envoyer.' }
+  if (file.size > MAX_FILE_BYTES) return { error: 'Fichier trop volumineux (max 20 Mo).' }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Session expirée, reconnecte-toi.' }
+
+  const contentType = safeContentType(file.type)
+  const path = `${ownerId}/${crypto.randomUUID()}${fileExtension(file.name)}`
+
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, { contentType, upsert: false })
+  if (uploadError) return { error: "L'envoi a échoué (accès refusé ?)." }
+
+  const { error: insertError } = await supabase.from('documents').insert({
+    owner_id: ownerId,
+    uploaded_by: user.id,
+    title: file.name,
+    storage_path: path,
+    mime_type: contentType,
+    size_bytes: file.size,
+    ...(folderId ? { folder_id: folderId } : {}),
+  })
+  if (insertError) {
+    await supabase.storage.from(BUCKET).remove([path])
+    return { error: "L'envoi a échoué (accès refusé ?)." }
+  }
+
+  revalidatePath('/')
+  return { message: 'Document envoyé.' }
 }

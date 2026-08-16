@@ -20,6 +20,8 @@ interface DocumentItem {
   sizeBytes: number | null
   createdAt: string
   signedUrl?: string
+  /** True when a collaborator uploaded this into the owner's space. */
+  received?: boolean
 }
 
 interface DocumentListProps {
@@ -182,6 +184,11 @@ export function DocumentList({ folders, documents, sharedDocuments }: DocumentLi
                     <span className="whitespace-nowrap">{formatBytes(doc.sizeBytes)}</span>
                     {' · '}
                     <span className="whitespace-nowrap">{formatDate(doc.createdAt)}</span>
+                    {doc.received && (
+                      <span className="ml-1.5 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                        Reçu
+                      </span>
+                    )}
                   </p>
                 </div>
               </li>
@@ -279,6 +286,11 @@ export function DocumentList({ folders, documents, sharedDocuments }: DocumentLi
                     <span className="whitespace-nowrap">{formatBytes(doc.sizeBytes)}</span>
                     {' · '}
                     <span className="whitespace-nowrap">{formatDate(doc.createdAt)}</span>
+                    {doc.received && (
+                      <span className="ml-1.5 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                        Reçu
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>

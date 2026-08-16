@@ -65,6 +65,7 @@ export type Database = {
           mime_type: string | null
           size_bytes: number | null
           folder_id: string | null
+          uploaded_by: string | null
           created_at: string
           updated_at: string
         }
@@ -76,6 +77,7 @@ export type Database = {
           mime_type?: string | null
           size_bytes?: number | null
           folder_id?: string | null
+          uploaded_by?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -87,6 +89,7 @@ export type Database = {
           mime_type?: string | null
           size_bytes?: number | null
           folder_id?: string | null
+          uploaded_by?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -249,6 +252,7 @@ export type Database = {
           document_id: string | null
           folder_id: string | null
           expires_at: string | null
+          permission: string
           created_at: string
         }
         Insert: {
@@ -257,6 +261,7 @@ export type Database = {
           document_id?: string | null
           folder_id?: string | null
           expires_at?: string | null
+          permission?: string
           created_at?: string
         }
         Update: {
@@ -265,6 +270,7 @@ export type Database = {
           document_id?: string | null
           folder_id?: string | null
           expires_at?: string | null
+          permission?: string
           created_at?: string
         }
         Relationships: [
