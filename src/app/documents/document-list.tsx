@@ -113,14 +113,15 @@ export function DocumentList({ folders, documents, sharedDocuments }: DocumentLi
 
   async function downloadZip(): Promise<void> {
     const ids = [...selectedDocs]
-    if (ids.length === 0) return
+    const folderIds = [...selectedFolders]
+    if (ids.length === 0 && folderIds.length === 0) return
     setZipping(true)
     setZipError(null)
     try {
       const response = await fetch(ZIP_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({ ids, folderIds }),
       })
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null
@@ -349,7 +350,7 @@ export function DocumentList({ folders, documents, sharedDocuments }: DocumentLi
               <button
                 type="button"
                 onClick={downloadZip}
-                disabled={selectedDocs.size === 0 || zipping}
+                disabled={(selectedDocs.size === 0 && selectedFolders.size === 0) || zipping}
                 className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 {zipping && (
