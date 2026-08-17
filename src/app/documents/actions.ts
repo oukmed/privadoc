@@ -35,6 +35,22 @@ function fileExtension(name: string): string {
   return /^[a-z0-9]{1,12}$/.test(ext) ? `.${ext}` : ''
 }
 
+/** Returns folderId only if it belongs to the user; otherwise null (root). */
+async function ownedFolderIdOrNull(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  folderId: string | null | undefined,
+  userId: string,
+): Promise<string | null> {
+  if (!folderId) return null
+  const { data } = await supabase
+    .from('folders')
+    .select('id')
+    .eq('id', folderId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  return data ? folderId : null
+}
+
 export async function uploadDocument(_prevState: UploadState, formData: FormData): Promise<UploadState> {
   const file = formData.get('file')
 
@@ -102,13 +118,15 @@ export async function registerDocument(input: {
   // The object must live under the caller's own folder prefix.
   if (!input.storagePath.startsWith(`${user.id}/`)) return { error: 'Chemin invalide.' }
 
+  const folderId = await ownedFolderIdOrNull(supabase, input.folderId, user.id)
+
   const { error } = await supabase.from('documents').insert({
     owner_id: user.id,
     title: input.title.slice(0, 255),
     storage_path: input.storagePath,
     mime_type: input.mimeType,
     size_bytes: input.sizeBytes,
-    ...(input.folderId ? { folder_id: input.folderId } : {}),
+    folder_id: folderId,
   })
 
   if (error) {
@@ -143,6 +161,10 @@ export async function registerDocuments(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Session expirée, reconnecte-toi.', added: 0 }
 
+  // A batch shares one target folder; keep it only if the user owns it.
+  const requestedFolderId = inputs.find((i) => i.folderId)?.folderId ?? null
+  const folderId = await ownedFolderIdOrNull(supabase, requestedFolderId, user.id)
+
   // Uniform key set on every row (PostgREST bulk-insert requirement).
   const rows = inputs
     .filter((i) => i.storagePath.startsWith(`${user.id}/`))
@@ -152,7 +174,7 @@ export async function registerDocuments(
       storage_path: i.storagePath,
       mime_type: i.mimeType,
       size_bytes: i.sizeBytes,
-      folder_id: i.folderId ?? null,
+      folder_id: folderId,
     }))
   if (rows.length === 0) return { error: 'Chemin invalide.', added: 0 }
 
