@@ -9,6 +9,15 @@ interface ScanButtonProps {
   folderId?: string
 }
 
+function readAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('read failed'))
+    reader.readAsDataURL(file)
+  })
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
@@ -37,10 +46,22 @@ async function pagesToPdf(dataUrls: string[]): Promise<Blob> {
   return pdf.output('blob')
 }
 
+function cameraErrorMessage(err: unknown): string {
+  const name = err instanceof DOMException ? err.name : ''
+  if (name === 'NotAllowedError') {
+    return 'Autorisation caméra refusée. Autorise la caméra pour ce site, ou importe une photo ci-dessous.'
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+    return 'Aucune caméra détectée sur cet appareil.'
+  }
+  return "Caméra indisponible ici. Si tu es dans l'app Telegram/Instagram, ouvre le lien dans Chrome — ou importe une photo ci-dessous."
+}
+
 export function ScanButton({ folderId }: ScanButtonProps) {
   const router = useRouter()
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
   const [pages, setPages] = useState<string[]>([])
   const [pending, setPending] = useState(false)
@@ -61,7 +82,7 @@ export function ScanButton({ folderId }: ScanButtonProps) {
         streamRef.current = stream
         if (videoRef.current) videoRef.current.srcObject = stream
       })
-      .catch(() => setError("Accès à la caméra refusé ou indisponible sur cet appareil."))
+      .catch((err) => setError(cameraErrorMessage(err)))
     return () => {
       active = false
       streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -91,6 +112,28 @@ export function ScanButton({ folderId }: ScanButtonProps) {
     if (!ctx) return
     ctx.drawImage(video, 0, 0)
     setPages((prev) => [...prev, canvas.toDataURL('image/jpeg', 0.9)])
+  }
+
+  // Fallback for browsers that block the live camera (e.g. in-app browsers):
+  // use the OS picker/camera. Images are normalized to JPEG for the PDF.
+  async function addImageFile(file: File): Promise<void> {
+    const img = await loadImage(await readAsDataURL(file))
+    const canvas = document.createElement('canvas')
+    canvas.width = img.width
+    canvas.height = img.height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.drawImage(img, 0, 0)
+    setPages((prev) => [...prev, canvas.toDataURL('image/jpeg', 0.9)])
+  }
+
+  async function handleFilePick(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    setError(null)
+    for (const file of files) {
+      if (file.type.startsWith('image/')) await addImageFile(file)
+    }
   }
 
   async function createPdf(): Promise<void> {
@@ -166,8 +209,26 @@ export function ScanButton({ folderId }: ScanButtonProps) {
           <div className="relative flex-1 overflow-hidden">
             <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-contain" />
             {error && (
-              <p className="absolute inset-x-0 top-1/2 px-6 text-center text-sm text-red-300">{error}</p>
+              <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-6 text-center">
+                <p className="text-sm text-red-300">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-4 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-900"
+                >
+                  Importer une photo
+                </button>
+              </div>
             )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              hidden
+              onChange={handleFilePick}
+            />
           </div>
 
           {pages.length > 0 && (
