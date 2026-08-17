@@ -13,6 +13,8 @@ interface AuthFormProps {
   /** Autocomplete hint for the password field: 'current-password' | 'new-password'. */
   passwordAutoComplete: 'current-password' | 'new-password'
   footer: ReactNode
+  /** Relative path to redirect to after auth (defaults to '/' server-side). */
+  next?: string
 }
 
 export function AuthForm({
@@ -22,6 +24,7 @@ export function AuthForm({
   action,
   passwordAutoComplete,
   footer,
+  next,
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(action, undefined)
 
@@ -37,6 +40,7 @@ export function AuthForm({
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
 
           <form action={formAction} className="mt-6 space-y-4">
+            {next && <input type="hidden" name="next" value={next} />}
             <div className="space-y-1.5">
               <label
                 htmlFor="email"

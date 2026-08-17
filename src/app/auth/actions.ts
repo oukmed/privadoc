@@ -24,6 +24,12 @@ function readCredentials(formData: FormData): { email: string; password: string 
   }
 }
 
+/** Same-origin relative path only (guards against open redirect); defaults to '/'. */
+function safeNext(value: FormDataEntryValue | null): string {
+  const v = typeof value === 'string' ? value : ''
+  return /^\/(?![/\\])/.test(v) ? v : '/'
+}
+
 function validate(email: string, password: string): string | null {
   if (!email || !password) return 'Email et mot de passe requis.'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Adresse email invalide.'
@@ -58,7 +64,7 @@ export async function login(_prevState: AuthState, formData: FormData): Promise<
   if (error) return { error: translateAuthError(error.message) }
 
   revalidatePath('/', 'layout')
-  redirect('/')
+  redirect(safeNext(formData.get('next')))
 }
 
 export async function signup(_prevState: AuthState, formData: FormData): Promise<AuthState> {
@@ -81,7 +87,7 @@ export async function signup(_prevState: AuthState, formData: FormData): Promise
   if (signInError) return { error: translateAuthError(signInError.message) }
 
   revalidatePath('/', 'layout')
-  redirect('/')
+  redirect(safeNext(formData.get('next')))
 }
 
 export async function signout(): Promise<void> {

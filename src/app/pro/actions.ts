@@ -138,7 +138,7 @@ export async function createRequest(
       sender,
       title,
       items,
-      url: `${APP_URL}/${clientId ? 'login' : 'signup'}`,
+      url: `${APP_URL}/${clientId ? 'login' : 'signup'}?next=%2Frequests`,
       existing: Boolean(clientId),
     }),
   })

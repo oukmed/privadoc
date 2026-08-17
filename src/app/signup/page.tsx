@@ -6,7 +6,14 @@ export const metadata = {
   title: 'Créer un compte · PrivaDoc',
 }
 
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | string[] }>
+}) {
+  const nextParam = (await searchParams).next
+  const next = typeof nextParam === 'string' ? nextParam : undefined
+  const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : '/login'
   return (
     <AuthForm
       title="Créer ton compte"
@@ -14,11 +21,12 @@ export default function SignupPage() {
       submitLabel="Créer le compte"
       action={signup}
       passwordAutoComplete="new-password"
+      next={next}
       footer={
         <>
           Déjà un compte ?{' '}
           <Link
-            href="/login"
+            href={loginHref}
             className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
           >
             Se connecter
