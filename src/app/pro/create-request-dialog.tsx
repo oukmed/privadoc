@@ -64,9 +64,9 @@ export function CreateRequestDialog() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="request-dialog-title"
-            className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+            className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900"
           >
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between border-b border-slate-200 p-6 dark:border-slate-800">
               <h2
                 id="request-dialog-title"
                 className="text-lg font-semibold text-slate-900 dark:text-slate-50"
@@ -86,8 +86,9 @@ export function CreateRequestDialog() {
               </button>
             </div>
 
-            <form action={action} className="mt-5 flex min-h-0 flex-col gap-4 overflow-y-auto">
-              <div>
+            <form action={action} className="flex min-h-0 flex-1 flex-col">
+              <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+                <div>
                 <label htmlFor="request-client" className={labelClass}>
                   Adresse email du client
                 </label>
@@ -170,19 +171,22 @@ export function CreateRequestDialog() {
                   + Ajouter une pièce
                 </button>
               </fieldset>
+              </div>
 
-              <button
-                type="submit"
-                disabled={pending}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {pending ? 'Création…' : 'Créer la demande'}
-              </button>
-              {state?.error && (
-                <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-                  {state.error}
-                </p>
-              )}
+              <div className="border-t border-slate-200 p-6 dark:border-slate-800">
+                {state?.error && (
+                  <p role="alert" className="mb-3 text-sm text-red-600 dark:text-red-400">
+                    {state.error}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {pending ? 'Création…' : 'Créer la demande'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
