@@ -121,6 +121,51 @@ export async function registerDocument(input: {
   return {}
 }
 
+/**
+ * Batch version: records many documents in ONE server action / ONE insert.
+ * Avoids firing many rapid authenticated actions (refresh-token rotation races)
+ * that can make auth.uid() briefly null and trip RLS.
+ */
+export async function registerDocuments(
+  inputs: {
+    title: string
+    storagePath: string
+    mimeType: string
+    sizeBytes: number
+    folderId?: string | null
+  }[],
+): Promise<{ error?: string; added: number }> {
+  if (inputs.length === 0) return { added: 0 }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Session expirée, reconnecte-toi.', added: 0 }
+
+  // Uniform key set on every row (PostgREST bulk-insert requirement).
+  const rows = inputs
+    .filter((i) => i.storagePath.startsWith(`${user.id}/`))
+    .map((i) => ({
+      owner_id: user.id,
+      title: i.title.slice(0, 255),
+      storage_path: i.storagePath,
+      mime_type: i.mimeType,
+      size_bytes: i.sizeBytes,
+      folder_id: i.folderId ?? null,
+    }))
+  if (rows.length === 0) return { error: 'Chemin invalide.', added: 0 }
+
+  const { error } = await supabase.from('documents').insert(rows)
+  if (error) {
+    await supabase.storage.from(BUCKET).remove(rows.map((r) => r.storage_path))
+    return { error: error.message, added: 0 }
+  }
+
+  revalidatePath('/')
+  return { added: rows.length }
+}
+
 export async function deleteSelection(formData: FormData): Promise<void> {
   const documentIds = formData.getAll('documentIds').map(String).filter(Boolean)
   const folderIds = formData.getAll('folderIds').map(String).filter(Boolean)

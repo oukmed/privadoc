@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import { registerDocument } from '@/app/documents/actions'
+import { registerDocument, registerDocuments } from '@/app/documents/actions'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const MAX_FILE_BYTES = 20 * 1024 * 1024 // 20 MB
@@ -64,4 +64,61 @@ export async function uploadDocumentFile(
     sizeBytes: file.size,
     folderId,
   })
+}
+
+/**
+ * Upload many files: push each to Storage from the browser, then record ALL
+ * rows in a single server action (one auth round-trip). Returns how many were
+ * added and the first error (if any).
+ */
+export async function uploadDocumentFiles(
+  files: File[],
+  folderId: string | undefined,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ added: number; error?: string }> {
+  if (files.length === 0) return { added: 0 }
+
+  const supabase = createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { added: 0, error: 'Session expirée, reconnecte-toi.' }
+
+  const items: {
+    title: string
+    storagePath: string
+    mimeType: string
+    sizeBytes: number
+    folderId?: string | null
+  }[] = []
+  let firstError: string | undefined
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    if (file.size === 0) firstError ??= `${file.name} : fichier vide ou introuvable.`
+    else if (file.size > MAX_FILE_BYTES) firstError ??= `${file.name} : trop volumineux (max 20 Mo).`
+    else {
+      const contentType = safeContentType(file.type)
+      const path = `${user.id}/${crypto.randomUUID()}${fileExtension(file.name)}`
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, file, { contentType, upsert: false })
+      if (error) firstError ??= `${file.name} : ${error.message}`
+      else
+        items.push({
+          title: file.name,
+          storagePath: path,
+          mimeType: contentType,
+          sizeBytes: file.size,
+          folderId,
+        })
+    }
+    onProgress?.(i + 1, files.length)
+  }
+
+  if (items.length === 0) return { added: 0, error: firstError ?? 'Aucun fichier valide.' }
+
+  const result = await registerDocuments(items)
+  if (result.error) return { added: 0, error: result.error }
+  return { added: result.added, error: firstError }
 }

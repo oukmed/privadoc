@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { uploadDocumentFile } from '@/app/documents/upload-client'
+import { uploadDocumentFiles } from '@/app/documents/upload-client'
 
 interface UploadFormProps {
   /** Optional target folder; uploads land here when set. */
@@ -29,21 +29,20 @@ export function UploadForm({ folderId }: UploadFormProps) {
     }
 
     setPending(true)
-    let added = 0
-    let firstError: string | null = null
     try {
-      for (let i = 0; i < files.length; i++) {
-        setMessage(`Téléversement ${i + 1}/${files.length}…`)
-        const result = await uploadDocumentFile(files[i], files[i].name, folderId)
-        if (result?.error) firstError ??= `${files[i].name} : ${result.error}`
-        else added++
-      }
-      if (added > 0) {
+      const result = await uploadDocumentFiles(files, folderId, (done, total) =>
+        setMessage(`Téléversement ${done}/${total}…`),
+      )
+      if (result.added > 0) {
         formRef.current?.reset()
         router.refresh()
       }
-      setMessage(added > 0 ? `${added} document${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''}.` : null)
-      setError(firstError)
+      setMessage(
+        result.added > 0
+          ? `${result.added} document${result.added > 1 ? 's' : ''} ajouté${result.added > 1 ? 's' : ''}.`
+          : null,
+      )
+      setError(result.error ?? null)
     } catch {
       setError('Le téléversement a échoué. Réessaie.')
     } finally {
