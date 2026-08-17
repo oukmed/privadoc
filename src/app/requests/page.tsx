@@ -3,6 +3,13 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Brand } from '@/app/brand'
 import { SubmitPiece } from '@/app/requests/submit-piece'
+import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
+
+function senderLabel(name: string | null, profession: string | null): string | null {
+  if (!name) return null
+  const role = profession ? (ROLE_LABELS[profession as RecipientRole] ?? null) : null
+  return role ? `${name} · ${role}` : name
+}
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 60 * 5 // 5 minutes
@@ -52,7 +59,7 @@ export default async function RequestsPage() {
   const { data: requests, error } = await supabase
     .from('document_requests')
     .select(
-      'id, title, status, created_at, request_items(id, label, due_date, status, comment, document_id, position)',
+      'id, title, status, created_at, professional_name, professional_profession, request_items(id, label, due_date, status, comment, document_id, position)',
     )
     .eq('client_id', user.id)
     .order('created_at', { ascending: false })
@@ -130,6 +137,14 @@ export default async function RequestsPage() {
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
                       {request.title}
                     </h2>
+                    {senderLabel(request.professional_name, request.professional_profession) && (
+                      <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                        Demandé par{' '}
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
+                          {senderLabel(request.professional_name, request.professional_profession)}
+                        </span>
+                      </p>
+                    )}
                   </header>
                   <ul className="divide-y divide-slate-200 dark:divide-slate-800">
                     {items.map((item) => {

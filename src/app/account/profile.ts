@@ -4,9 +4,16 @@ import { createClient } from '@/lib/supabase/server'
 export interface Profile {
   isProfessional: boolean
   plan: string
+  displayName: string | null
+  profession: string | null
 }
 
-const DEFAULT_PROFILE: Profile = { isProfessional: false, plan: 'free' }
+const DEFAULT_PROFILE: Profile = {
+  isProfessional: false,
+  plan: 'free',
+  displayName: null,
+  profession: null,
+}
 
 /**
  * The caller's profile flags. Creates a default row on first access so every
@@ -21,11 +28,17 @@ export async function getProfile(): Promise<Profile> {
 
   const { data } = await supabase
     .from('profiles')
-    .select('is_professional, plan')
+    .select('is_professional, plan, display_name, profession')
     .eq('id', user.id)
     .maybeSingle()
 
-  if (data) return { isProfessional: data.is_professional, plan: data.plan }
+  if (data)
+    return {
+      isProfessional: data.is_professional,
+      plan: data.plan,
+      displayName: data.display_name,
+      profession: data.profession,
+    }
 
   // First visit: create the row (RLS WITH CHECK requires id = auth.uid()).
   await supabase.from('profiles').upsert({ id: user.id })

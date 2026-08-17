@@ -302,6 +302,8 @@ export type Database = {
           id: string
           is_professional: boolean
           plan: string
+          display_name: string | null
+          profession: string | null
           stripe_customer_id: string | null
           subscription_status: string | null
           created_at: string
@@ -311,6 +313,8 @@ export type Database = {
           id: string
           is_professional?: boolean
           plan?: string
+          display_name?: string | null
+          profession?: string | null
           stripe_customer_id?: string | null
           subscription_status?: string | null
           created_at?: string
@@ -320,6 +324,8 @@ export type Database = {
           id?: string
           is_professional?: boolean
           plan?: string
+          display_name?: string | null
+          profession?: string | null
           stripe_customer_id?: string | null
           subscription_status?: string | null
           created_at?: string
@@ -343,6 +349,8 @@ export type Database = {
           client_id: string | null
           title: string
           status: string
+          professional_name: string | null
+          professional_profession: string | null
           created_at: string
           updated_at: string
         }
@@ -353,6 +361,8 @@ export type Database = {
           client_id?: string | null
           title: string
           status?: string
+          professional_name?: string | null
+          professional_profession?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -363,6 +373,8 @@ export type Database = {
           client_id?: string | null
           title?: string
           status?: string
+          professional_name?: string | null
+          professional_profession?: string | null
           created_at?: string
           updated_at?: string
         }

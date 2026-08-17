@@ -4,6 +4,17 @@ import { revalidatePath } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { notify } from '@/lib/notify'
 import { sendEmail } from '@/lib/email'
+import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
+
+function professionLabel(profession: string | null): string | null {
+  return profession ? (ROLE_LABELS[profession as RecipientRole] ?? null) : null
+}
+
+/** "Maître Dupont (Avocat)" — a human sender identity from name + profession. */
+function senderIdentity(name: string, profession: string | null): string {
+  const label = professionLabel(profession)
+  return label ? `${name} (${label})` : name
+}
 
 export type RequestState = { error?: string; message?: string } | undefined
 
@@ -11,7 +22,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
 function requestEmailHtml(args: {
-  proEmail: string
+  sender: string
   title: string
   items: { label: string; dueDate: string }[]
   url: string
@@ -26,7 +37,7 @@ function requestEmailHtml(args: {
   return `
     <div style="font-family:system-ui,sans-serif;max-width:520px;margin:auto;color:#1e293b">
       <h2 style="color:#4f46e5">Nouvelle demande de pièces</h2>
-      <p><strong>${args.proEmail}</strong> vous demande les pièces suivantes sur PrivaDoc :</p>
+      <p><strong>${args.sender}</strong> vous demande les pièces suivantes sur PrivaDoc :</p>
       <p style="font-weight:600">${args.title}</p>
       <ul>${list}</ul>
       <p>${cta}</p>
@@ -70,9 +81,26 @@ export async function createRequest(
 
   const clientId = await findUserIdByEmail(clientEmail)
 
+  // Pro identity to snapshot onto the request (the client cannot read the pro's
+  // profile row) and to show as the sender.
+  const { data: proProfile } = await supabase
+    .from('profiles')
+    .select('display_name, profession')
+    .eq('id', user.id)
+    .maybeSingle()
+  const proName = proProfile?.display_name?.trim() || user.email || 'Un professionnel'
+  const proProfession = proProfile?.profession ?? null
+
   const { data: request, error: requestError } = await supabase
     .from('document_requests')
-    .insert({ professional_id: user.id, client_email: clientEmail, title, client_id: clientId })
+    .insert({
+      professional_id: user.id,
+      client_email: clientEmail,
+      title,
+      client_id: clientId,
+      professional_name: proName,
+      professional_profession: proProfession,
+    })
     .select('id')
     .single()
   if (requestError || !request) return { error: 'Impossible de créer la demande.' }
@@ -94,6 +122,7 @@ export async function createRequest(
       userId: clientId,
       type: 'request_created',
       title: `Nouvelle demande : ${title}`,
+      body: `Demandé par ${senderIdentity(proName, proProfession)}`,
       requestId: request.id,
     })
   }
@@ -101,11 +130,12 @@ export async function createRequest(
   revalidatePath('/pro')
 
   // Email the client so they learn about the request even without an account.
+  const sender = senderIdentity(proName, proProfession)
   const { error: emailError } = await sendEmail({
     to: clientEmail,
-    subject: `${user.email ?? 'Un professionnel'} vous demande des pièces sur PrivaDoc`,
+    subject: `${sender} vous demande des pièces sur PrivaDoc`,
     html: requestEmailHtml({
-      proEmail: user.email ?? 'Un professionnel',
+      sender,
       title,
       items,
       url: `${APP_URL}/${clientId ? 'login' : 'signup'}`,

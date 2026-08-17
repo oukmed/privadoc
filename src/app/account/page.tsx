@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { Brand } from '@/app/brand'
 import { signout } from '@/app/auth/actions'
 import { getProfile } from '@/app/account/profile'
-import { setProfessional } from '@/app/account/actions'
+import { setProfessional, updateProProfile } from '@/app/account/actions'
+import { RECIPIENT_ROLES, ROLE_LABELS } from '@/lib/roles'
 
 export default async function AccountPage() {
   const supabase = await createClient()
@@ -82,6 +83,63 @@ export default async function AccountPage() {
               </button>
             </form>
           </div>
+
+          {profile.isProfessional && (
+            <div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+                Votre identité (visible par vos clients)
+              </h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Ce nom et cette profession apparaissent dans les emails et l&apos;espace de vos clients.
+              </p>
+              <form action={updateProProfile} className="mt-4 flex flex-col gap-4">
+                <div>
+                  <label
+                    htmlFor="displayName"
+                    className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    Nom ou cabinet
+                  </label>
+                  <input
+                    id="displayName"
+                    name="displayName"
+                    type="text"
+                    maxLength={120}
+                    defaultValue={profile.displayName ?? ''}
+                    placeholder="Maître Dupont — Cabinet Dupont & Associés"
+                    className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="profession"
+                    className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    Profession
+                  </label>
+                  <select
+                    id="profession"
+                    name="profession"
+                    defaultValue={profile.profession ?? ''}
+                    className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  >
+                    <option value="">— Non précisée —</option>
+                    {RECIPIENT_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  className="self-start rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                >
+                  Enregistrer
+                </button>
+              </form>
+            </div>
+          )}
 
           {profile.isProfessional && (
             <div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
