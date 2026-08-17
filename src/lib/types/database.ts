@@ -297,6 +297,194 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          id: string
+          is_professional: boolean
+          plan: string
+          stripe_customer_id: string | null
+          subscription_status: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          is_professional?: boolean
+          plan?: string
+          stripe_customer_id?: string | null
+          subscription_status?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          is_professional?: boolean
+          plan?: string
+          stripe_customer_id?: string | null
+          subscription_status?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_id_fkey'
+            columns: ['id']
+            isOneToOne: true
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      document_requests: {
+        Row: {
+          id: string
+          professional_id: string
+          client_email: string
+          client_id: string | null
+          title: string
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          professional_id?: string
+          client_email: string
+          client_id?: string | null
+          title: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          professional_id?: string
+          client_email?: string
+          client_id?: string | null
+          title?: string
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'document_requests_professional_id_fkey'
+            columns: ['professional_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'document_requests_client_id_fkey'
+            columns: ['client_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      request_items: {
+        Row: {
+          id: string
+          request_id: string
+          label: string
+          due_date: string | null
+          status: string
+          comment: string | null
+          document_id: string | null
+          position: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          label: string
+          due_date?: string | null
+          status?: string
+          comment?: string | null
+          document_id?: string | null
+          position?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          request_id?: string
+          label?: string
+          due_date?: string | null
+          status?: string
+          comment?: string | null
+          document_id?: string | null
+          position?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'request_items_request_id_fkey'
+            columns: ['request_id']
+            isOneToOne: false
+            referencedRelation: 'document_requests'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'request_items_document_id_fkey'
+            columns: ['document_id']
+            isOneToOne: false
+            referencedRelation: 'documents'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          body: string | null
+          request_id: string | null
+          read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title: string
+          body?: string | null
+          request_id?: string | null
+          read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          body?: string | null
+          request_id?: string | null
+          read?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notifications_request_id_fkey'
+            columns: ['request_id']
+            isOneToOne: false
+            referencedRelation: 'document_requests'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

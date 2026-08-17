@@ -9,6 +9,8 @@ export const RECIPIENT_ROLES = [
   'notaire',
   'administration',
   'autre',
+  'consulat',
+  'traducteur',
 ] as const
 
 export type RecipientRole = (typeof RECIPIENT_ROLES)[number]
@@ -20,4 +22,6 @@ export const ROLE_LABELS: Record<RecipientRole, string> = {
   notaire: 'Notaire',
   administration: 'Administration',
   autre: 'Autre',
+  consulat: 'Consulat',
+  traducteur: 'Traducteur assermenté',
 }

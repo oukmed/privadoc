@@ -1,0 +1,127 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { notify } from '@/lib/notify'
+
+export type RequestState = { error?: string; message?: string } | undefined
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/** Resolve an existing account id by email (paginated; fine at this scale). */
+async function findUserIdByEmail(email: string): Promise<string | null> {
+  const { data } = await createAdminClient().auth.admin.listUsers({ perPage: 1000 })
+  const match = data?.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())
+  return match?.id ?? null
+}
+
+/**
+ * A pro creates a "demande de pièces": a titled request for a client, with a
+ * list of expected items (label + optional deadline). Notifies the client when
+ * their account already exists.
+ */
+export async function createRequest(
+  _prevState: RequestState,
+  formData: FormData,
+): Promise<RequestState> {
+  const title = String(formData.get('title') ?? '').trim()
+  const clientEmail = String(formData.get('clientEmail') ?? '').trim()
+  if (!title) return { error: 'Donne un titre à la demande.' }
+  if (!EMAIL_RE.test(clientEmail)) return { error: 'Adresse email du client invalide.' }
+
+  const labels = formData.getAll('label').map(String)
+  const dueDates = formData.getAll('dueDate').map(String)
+  const items = labels
+    .map((label, index) => ({ label: label.trim(), dueDate: (dueDates[index] ?? '').trim() }))
+    .filter((item) => item.label.length > 0)
+  if (items.length === 0) return { error: 'Ajoute au moins une pièce à fournir.' }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Session expirée, reconnecte-toi.' }
+
+  const clientId = await findUserIdByEmail(clientEmail)
+
+  const { data: request, error: requestError } = await supabase
+    .from('document_requests')
+    .insert({ professional_id: user.id, client_email: clientEmail, title, client_id: clientId })
+    .select('id')
+    .single()
+  if (requestError || !request) return { error: 'Impossible de créer la demande.' }
+
+  const rows = items.map((item, index) => ({
+    request_id: request.id,
+    label: item.label,
+    due_date: item.dueDate || null,
+    position: index,
+  }))
+  const { error: itemsError } = await supabase.from('request_items').insert(rows)
+  if (itemsError) {
+    await supabase.from('document_requests').delete().eq('id', request.id)
+    return { error: 'Impossible d’enregistrer les pièces demandées.' }
+  }
+
+  if (clientId) {
+    await notify({
+      userId: clientId,
+      type: 'request_created',
+      title: `Nouvelle demande : ${title}`,
+      requestId: request.id,
+    })
+  }
+
+  revalidatePath('/pro')
+  return { message: 'Demande créée.' }
+}
+
+/**
+ * Validate or reject a submitted piece with an optional comment, and notify the
+ * client. RLS restricts the update to items belonging to the caller's requests.
+ */
+export async function reviewItem(formData: FormData): Promise<void> {
+  const itemId = String(formData.get('itemId') ?? '').trim()
+  const decision = String(formData.get('decision') ?? '').trim()
+  const comment = String(formData.get('comment') ?? '').trim() || null
+  if (!itemId || (decision !== 'validated' && decision !== 'rejected')) return
+
+  const supabase = await createClient()
+  const { data: item } = await supabase
+    .from('request_items')
+    .update({ status: decision, comment })
+    .eq('id', itemId)
+    .select('request_id, label')
+    .single()
+  if (!item) return
+
+  const { data: request } = await supabase
+    .from('document_requests')
+    .select('client_id, title')
+    .eq('id', item.request_id)
+    .single()
+
+  if (request?.client_id) {
+    const validated = decision === 'validated'
+    await notify({
+      userId: request.client_id,
+      type: validated ? 'piece_validated' : 'piece_rejected',
+      title: validated ? `Pièce validée : ${item.label}` : `Pièce refusée : ${item.label}`,
+      body: comment ?? undefined,
+      requestId: item.request_id,
+    })
+  }
+
+  revalidatePath(`/pro/${item.request_id}`)
+}
+
+/** Delete a request (RLS: pro-only). Items cascade. */
+export async function deleteRequest(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '').trim()
+  if (!id) return
+
+  const supabase = await createClient()
+  await supabase.from('document_requests').delete().eq('id', id)
+
+  revalidatePath('/pro')
+}
