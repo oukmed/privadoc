@@ -55,30 +55,8 @@ export default async function ProPage() {
 
   const profile = await getProfile()
 
-  if (!profile.isProfessional) {
-    return (
-      <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-        <ProHeader email={user.email} />
-        <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-              Espace professionnel
-            </h1>
-            <p className="mx-auto mt-3 max-w-md text-sm text-slate-500 dark:text-slate-400">
-              Demandez des pièces à vos clients, suivez leurs dépôts et validez chaque document en un
-              seul endroit. Activez le compte professionnel pour commencer.
-            </p>
-            <Link
-              href="/account"
-              className="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
-            >
-              Activer le compte professionnel
-            </Link>
-          </div>
-        </main>
-      </div>
-    )
-  }
+  // Pro space is reserved for professional accounts. Clients are sent back home.
+  if (!profile.isProfessional) redirect('/')
 
   const { data: requestsData } = await supabase
     .from('document_requests')
@@ -119,13 +97,26 @@ export default async function ProPage() {
             </p>
           </div>
         ) : (
-          <div className="mt-8 flex flex-col gap-8">
+          <div className="mt-8 flex flex-col gap-6">
             {[...byClient.entries()].map(([clientEmail, clientRequests]) => (
-              <section key={clientEmail}>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {clientEmail}
-                </h2>
-                <ul className="mt-3 flex flex-col gap-3">
+              <section
+                key={clientEmail}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+              >
+                <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-800 dark:bg-slate-800/40">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                      {clientEmail.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      {clientEmail}
+                    </span>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    {clientRequests.length} {clientRequests.length > 1 ? 'demandes' : 'demande'}
+                  </span>
+                </header>
+                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                   {clientRequests.map((request) => {
                     const total = request.request_items.length
                     const validated = request.request_items.filter(
@@ -134,7 +125,7 @@ export default async function ProPage() {
                     return (
                       <li
                         key={request.id}
-                        className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+                        className="flex items-center justify-between gap-4 px-5 py-4"
                       >
                         <Link href={`/pro/${request.id}`} className="min-w-0 flex-1">
                           <p className="truncate font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400">

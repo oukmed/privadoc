@@ -30,6 +30,23 @@ function safeNext(value: FormDataEntryValue | null): string {
   return /^\/(?![/\\])/.test(v) ? v : '/'
 }
 
+/**
+ * Where to send a user with no explicit `next`: a client who still has open
+ * document requests lands on "Mes demandes" so they act on them right away.
+ */
+async function defaultLanding(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string | undefined,
+): Promise<string> {
+  if (!userId) return '/'
+  const { count } = await supabase
+    .from('document_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('client_id', userId)
+    .eq('status', 'open')
+  return (count ?? 0) > 0 ? '/requests' : '/'
+}
+
 function validate(email: string, password: string): string | null {
   if (!email || !password) return 'Email et mot de passe requis.'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Adresse email invalide.'
@@ -59,12 +76,15 @@ export async function login(_prevState: AuthState, formData: FormData): Promise<
   if (validationError) return { error: validationError }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) return { error: translateAuthError(error.message) }
 
+  const explicit = safeNext(formData.get('next'))
+  const target = explicit !== '/' ? explicit : await defaultLanding(supabase, data.user?.id)
+
   revalidatePath('/', 'layout')
-  redirect(safeNext(formData.get('next')))
+  redirect(target)
 }
 
 export async function signup(_prevState: AuthState, formData: FormData): Promise<AuthState> {
@@ -83,11 +103,14 @@ export async function signup(_prevState: AuthState, formData: FormData): Promise
   if (createError) return { error: translateAuthError(createError.message) }
 
   const supabase = await createClient()
-  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
   if (signInError) return { error: translateAuthError(signInError.message) }
 
+  const explicit = safeNext(formData.get('next'))
+  const target = explicit !== '/' ? explicit : await defaultLanding(supabase, data.user?.id)
+
   revalidatePath('/', 'layout')
-  redirect(safeNext(formData.get('next')))
+  redirect(target)
 }
 
 export async function signout(): Promise<void> {
