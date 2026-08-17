@@ -118,33 +118,47 @@ export function CreateRequestDialog() {
 
               <fieldset className="min-h-0">
                 <legend className={labelClass}>Pièces à fournir</legend>
-                <div className="mt-1.5 flex flex-col gap-2">
-                  {rows.map((rowId) => (
-                    <div key={rowId} className="flex items-center gap-2">
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Le client déposera un document pour chaque pièce listée ci-dessous.
+                </p>
+                <div className="mt-2 flex flex-col gap-3">
+                  {rows.map((rowId, index) => (
+                    <div
+                      key={rowId}
+                      className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                          Pièce {index + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setRows((prev) => (prev.length > 1 ? prev.filter((r) => r !== rowId) : prev))
+                          }
+                          aria-label="Retirer cette pièce"
+                          className="rounded p-1 text-slate-400 transition hover:text-red-600 disabled:opacity-40 dark:hover:text-red-400"
+                          disabled={rows.length <= 1}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" className="size-4" aria-hidden="true">
+                            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      </div>
+                      <label className="mt-2 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                        Nom de la pièce
+                      </label>
                       <input
                         name="label"
                         type="text"
+                        required
                         placeholder="Ex. Dernier avis d'imposition"
-                        className={`flex-1 ${inputClass}`}
+                        className={`mt-1 ${inputClass}`}
                       />
-                      <input
-                        name="dueDate"
-                        type="date"
-                        aria-label="Échéance (optionnelle)"
-                        className={`w-40 ${inputClass}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setRows((prev) => (prev.length > 1 ? prev.filter((r) => r !== rowId) : prev))
-                        }
-                        aria-label="Retirer cette pièce"
-                        className="shrink-0 rounded p-1.5 text-slate-400 transition hover:text-red-600 dark:hover:text-red-400"
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" className="size-4" aria-hidden="true">
-                          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                      </button>
+                      <label className="mt-2 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                        Échéance <span className="font-normal text-slate-400">(facultatif)</span>
+                      </label>
+                      <input name="dueDate" type="date" className={`mt-1 ${inputClass}`} />
                     </div>
                   ))}
                 </div>
