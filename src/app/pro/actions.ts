@@ -3,10 +3,36 @@
 import { revalidatePath } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { notify } from '@/lib/notify'
+import { sendEmail } from '@/lib/email'
 
 export type RequestState = { error?: string; message?: string } | undefined
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
+function requestEmailHtml(args: {
+  proEmail: string
+  title: string
+  items: { label: string; dueDate: string }[]
+  url: string
+  existing: boolean
+}): string {
+  const list = args.items
+    .map((i) => `<li>${i.label}${i.dueDate ? ` — avant le ${i.dueDate}` : ''}</li>`)
+    .join('')
+  const cta = args.existing
+    ? 'Connectez-vous pour déposer vos documents :'
+    : 'Créez votre compte gratuit pour déposer vos documents :'
+  return `
+    <div style="font-family:system-ui,sans-serif;max-width:520px;margin:auto;color:#1e293b">
+      <h2 style="color:#4f46e5">Nouvelle demande de pièces</h2>
+      <p><strong>${args.proEmail}</strong> vous demande les pièces suivantes sur PrivaDoc :</p>
+      <p style="font-weight:600">${args.title}</p>
+      <ul>${list}</ul>
+      <p>${cta}</p>
+      <p><a href="${args.url}" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Accéder à PrivaDoc</a></p>
+    </div>`
+}
 
 /** Resolve an existing account id by email (paginated; fine at this scale). */
 async function findUserIdByEmail(email: string): Promise<string | null> {
@@ -73,7 +99,24 @@ export async function createRequest(
   }
 
   revalidatePath('/pro')
-  return { message: 'Demande créée.' }
+
+  // Email the client so they learn about the request even without an account.
+  const { error: emailError } = await sendEmail({
+    to: clientEmail,
+    subject: `${user.email ?? 'Un professionnel'} vous demande des pièces sur PrivaDoc`,
+    html: requestEmailHtml({
+      proEmail: user.email ?? 'Un professionnel',
+      title,
+      items,
+      url: `${APP_URL}/${clientId ? 'login' : 'signup'}`,
+      existing: Boolean(clientId),
+    }),
+  })
+  if (emailError) {
+    return { message: `Demande créée, mais l’email n’a pas pu être envoyé : ${emailError}` }
+  }
+
+  return { message: 'Demande créée et email envoyé au client.' }
 }
 
 /**
