@@ -22,22 +22,28 @@ export function UploadForm({ folderId }: UploadFormProps) {
     setMessage(null)
 
     const input = formRef.current?.elements.namedItem('file') as HTMLInputElement | null
-    const file = input?.files?.[0]
-    if (!file) {
-      setError('Choisis un fichier à téléverser.')
+    const files = Array.from(input?.files ?? [])
+    if (files.length === 0) {
+      setError('Choisis au moins un fichier à téléverser.')
       return
     }
 
     setPending(true)
+    let added = 0
+    let firstError: string | null = null
     try {
-      const result = await uploadDocumentFile(file, file.name, folderId)
-      if (result?.error) {
-        setError(result.error)
-        return
+      for (let i = 0; i < files.length; i++) {
+        setMessage(`Téléversement ${i + 1}/${files.length}…`)
+        const result = await uploadDocumentFile(files[i], files[i].name, folderId)
+        if (result?.error) firstError ??= `${files[i].name} : ${result.error}`
+        else added++
       }
-      setMessage('Document ajouté.')
-      formRef.current?.reset()
-      router.refresh()
+      if (added > 0) {
+        formRef.current?.reset()
+        router.refresh()
+      }
+      setMessage(added > 0 ? `${added} document${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''}.` : null)
+      setError(firstError)
     } catch {
       setError('Le téléversement a échoué. Réessaie.')
     } finally {
@@ -56,6 +62,7 @@ export function UploadForm({ folderId }: UploadFormProps) {
           type="file"
           name="file"
           required
+          multiple
           className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100 dark:text-slate-400 dark:file:bg-indigo-950/50 dark:file:text-indigo-300"
         />
         <button
