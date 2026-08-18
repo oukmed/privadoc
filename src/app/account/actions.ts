@@ -7,6 +7,16 @@ import { sendEmail } from '@/lib/email'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
+/** Escape user-controlled values before interpolating them into email HTML. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 /**
  * Profession is either a known role key OR a free-text value the user typed when
  * their profession isn't in the list. A non-empty custom field wins.
@@ -22,8 +32,8 @@ function proRequestEmailHtml(who: string, email: string): string {
   return `
     <div style="font-family:system-ui,sans-serif;max-width:520px;margin:auto;color:#1e293b">
       <h2 style="color:#4f46e5">Nouvelle demande de compte professionnel</h2>
-      <p><strong>${who}</strong> souhaite créer un compte professionnel sur PrivaDoc.</p>
-      <p style="color:#64748b">Email : ${email}</p>
+      <p><strong>${escapeHtml(who)}</strong> souhaite créer un compte professionnel sur PrivaDoc.</p>
+      <p style="color:#64748b">Email : ${escapeHtml(email)}</p>
       <p><a href="${APP_URL}/admin" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Valider dans la console d'administration</a></p>
     </div>`
 }
