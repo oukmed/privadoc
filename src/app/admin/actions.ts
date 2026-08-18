@@ -68,3 +68,39 @@ export async function rejectPro(formData: FormData): Promise<void> {
 
   revalidatePath('/admin')
 }
+
+/**
+ * Manually validate a pro's paid subscription (beyond the free client tier).
+ * ponytail: manual admin gate until Stripe is wired — plan/subscription_status
+ * are the placeholders the billing integration will later drive automatically.
+ */
+export async function activateSubscription(formData: FormData): Promise<void> {
+  const profileId = String(formData.get('profileId') ?? '').trim()
+  if (!profileId) return
+
+  const supabase = await createClient()
+  if (!(await requireAdmin(supabase))) return
+
+  await supabase
+    .from('profiles')
+    .update({ plan: 'pro', subscription_status: 'active' })
+    .eq('id', profileId)
+
+  revalidatePath('/admin')
+}
+
+/** Revoke a pro's paid subscription (back to the free tier). */
+export async function deactivateSubscription(formData: FormData): Promise<void> {
+  const profileId = String(formData.get('profileId') ?? '').trim()
+  if (!profileId) return
+
+  const supabase = await createClient()
+  if (!(await requireAdmin(supabase))) return
+
+  await supabase
+    .from('profiles')
+    .update({ plan: 'free', subscription_status: 'inactive' })
+    .eq('id', profileId)
+
+  revalidatePath('/admin')
+}
