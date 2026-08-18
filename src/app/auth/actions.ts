@@ -7,6 +7,19 @@ import { sendEmail } from '@/lib/email'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
+// Best-effort in-memory throttle for password-reset emails. Serverless: per warm
+// instance, resets on cold start — enough to blunt rapid inbox spam.
+// ponytail: move to a shared store (DB/Redis) only if abuse actually appears.
+const resetHits = new Map<string, number[]>()
+function resetThrottled(email: string): boolean {
+  const now = Date.now()
+  const windowMs = 15 * 60 * 1000
+  const recent = (resetHits.get(email) ?? []).filter((t) => now - t < windowMs)
+  recent.push(now)
+  resetHits.set(email, recent)
+  return recent.length > 3
+}
+
 /**
  * Result returned by the auth Server Actions to drive `useActionState`.
  * On success the action redirects and never returns a value.
@@ -138,6 +151,12 @@ export async function requestPasswordReset(
   const email = String(formData.get('email') ?? '').trim()
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Adresse email invalide.' }
 
+  const genericMessage =
+    'Si un compte existe pour cet email, un lien de réinitialisation vient d’être envoyé.'
+  // Throttle before sending — return the SAME generic message so throttling never
+  // reveals whether the account exists.
+  if (resetThrottled(email.toLowerCase())) return { message: genericMessage }
+
   const { data } = await createAdminClient().auth.admin.generateLink({ type: 'recovery', email })
   const hashedToken = data?.properties?.hashed_token
   if (hashedToken) {
@@ -148,7 +167,7 @@ export async function requestPasswordReset(
       html: resetEmailHtml(url),
     })
   }
-  return { message: 'Si un compte existe pour cet email, un lien de réinitialisation vient d’être envoyé.' }
+  return { message: genericMessage }
 }
 
 /** Sets a new password for the user in the (recovery) session. */

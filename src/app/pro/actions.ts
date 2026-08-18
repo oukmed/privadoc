@@ -20,6 +20,7 @@ export type RequestState = { error?: string; message?: string } | undefined
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
+const REQUEST_RATE_LIMIT_PER_HOUR = 30
 
 /** Escape user-controlled values before interpolating them into email HTML. */
 function escapeHtml(value: string): string {
@@ -105,6 +106,18 @@ export async function createRequest(
   if (!proProfile?.is_professional) {
     return { error: "Votre compte professionnel n'est pas encore activé." }
   }
+
+  // Rate limit: cap requests per pro per hour (each sends an email). Counted in
+  // the DB (RLS-scoped to the pro), so it survives restarts.
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const { count } = await supabase
+    .from('document_requests')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', oneHourAgo)
+  if ((count ?? 0) >= REQUEST_RATE_LIMIT_PER_HOUR) {
+    return { error: 'Limite de demandes atteinte (réessaie dans une heure).' }
+  }
+
   const proName = proProfile?.display_name?.trim() || user.email || 'Un professionnel'
   const proProfession = proProfile?.profession ?? null
 
