@@ -5,22 +5,31 @@ import { createClient } from '@/lib/supabase/server'
 import { RECIPIENT_ROLES, type RecipientRole } from '@/lib/roles'
 
 /**
- * Toggle the caller's professional status. Reads the `professional` field
- * (checkbox 'on' / absent). RLS WITH CHECK requires id = auth.uid().
+ * A client requests a professional account. This only marks the request as
+ * pending — an admin must approve it before is_professional becomes true.
+ * RLS WITH CHECK requires id = auth.uid().
  */
-export async function setProfessional(formData: FormData): Promise<void> {
-  const isProfessional = String(formData.get('professional') ?? '') === 'on'
-
+export async function requestProAccount(): Promise<void> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return
 
-  await supabase.from('profiles').upsert({ id: user.id, is_professional: isProfessional })
+  // Don't clobber an already-approved pro.
+  const { data: current } = await supabase
+    .from('profiles')
+    .select('is_professional, pro_status')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (current?.is_professional || current?.pro_status === 'pending') return
 
+  await supabase
+    .from('profiles')
+    .upsert({ id: user.id, account_type: 'pro', pro_status: 'pending' })
+
+  revalidatePath('/pro')
   revalidatePath('/account')
-  revalidatePath('/')
 }
 
 /**

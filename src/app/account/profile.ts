@@ -6,6 +6,9 @@ export interface Profile {
   plan: string
   displayName: string | null
   profession: string | null
+  /** null | 'pending' | 'approved' | 'rejected' — approval state of a pro request. */
+  proStatus: string | null
+  isAdmin: boolean
 }
 
 const DEFAULT_PROFILE: Profile = {
@@ -13,6 +16,8 @@ const DEFAULT_PROFILE: Profile = {
   plan: 'free',
   displayName: null,
   profession: null,
+  proStatus: null,
+  isAdmin: false,
 }
 
 /**
@@ -28,7 +33,7 @@ export async function getProfile(): Promise<Profile> {
 
   const { data } = await supabase
     .from('profiles')
-    .select('is_professional, plan, display_name, profession')
+    .select('is_professional, plan, display_name, profession, pro_status, is_admin')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -38,6 +43,8 @@ export async function getProfile(): Promise<Profile> {
       plan: data.plan,
       displayName: data.display_name,
       profession: data.profession,
+      proStatus: data.pro_status,
+      isAdmin: data.is_admin,
     }
 
   // First visit: create the row (RLS WITH CHECK requires id = auth.uid()).

@@ -128,7 +128,7 @@ export default async function Home({
   }))
 
   const hasError = foldersError || documentsError
-  const { isProfessional } = await getProfile()
+  const { isAdmin } = await getProfile()
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
@@ -136,14 +136,12 @@ export default async function Home({
         <Brand />
         <div className="flex items-center gap-4">
           <nav className="hidden items-center gap-4 sm:flex">
-            {isProfessional && (
-              <Link
-                href="/pro"
-                className="text-sm font-medium text-slate-600 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
-              >
-                Espace pro
-              </Link>
-            )}
+            <Link
+              href="/pro"
+              className="text-sm font-medium text-slate-600 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
+            >
+              Espace pro
+            </Link>
             <Link
               href="/requests"
               className="text-sm font-medium text-slate-600 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
@@ -162,6 +160,14 @@ export default async function Home({
             >
               Compte
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
+              >
+                Admin
+              </Link>
+            )}
           </nav>
           <NotificationsBell />
           <form action={signout}>

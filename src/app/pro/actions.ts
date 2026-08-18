@@ -85,9 +85,12 @@ export async function createRequest(
   // profile row) and to show as the sender.
   const { data: proProfile } = await supabase
     .from('profiles')
-    .select('display_name, profession')
+    .select('display_name, profession, is_professional')
     .eq('id', user.id)
     .maybeSingle()
+  if (!proProfile?.is_professional) {
+    return { error: "Votre compte professionnel n'est pas encore activé." }
+  }
   const proName = proProfile?.display_name?.trim() || user.email || 'Un professionnel'
   const proProfession = proProfile?.profession ?? null
 

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Brand } from '@/app/brand'
 import { signout } from '@/app/auth/actions'
 import { getProfile } from '@/app/account/profile'
+import { requestProAccount } from '@/app/account/actions'
 import { CreateRequestDialog } from '@/app/pro/create-request-dialog'
 import { deleteRequest } from '@/app/pro/actions'
 
@@ -51,12 +52,54 @@ export default async function ProPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) redirect('/login?next=/pro')
 
   const profile = await getProfile()
 
-  // Pro space is reserved for professional accounts. Clients are sent back home.
-  if (!profile.isProfessional) redirect('/')
+  // Pro space is reserved for APPROVED professional accounts. A client sees the
+  // onboarding (request to become pro) or a pending-validation notice instead.
+  if (!profile.isProfessional) {
+    const pending = profile.proStatus === 'pending'
+    return (
+      <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
+        <ProHeader email={user.email} />
+        <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+            {pending ? (
+              <>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+                  Demande en cours de validation
+                </h1>
+                <p className="mx-auto mt-3 max-w-md text-sm text-slate-500 dark:text-slate-400">
+                  Votre compte professionnel est en attente d&apos;approbation par un administrateur.
+                  Vous recevrez un email dès qu&apos;il sera activé.
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+                  Espace professionnel
+                </h1>
+                <p className="mx-auto mt-3 max-w-md text-sm text-slate-500 dark:text-slate-400">
+                  Demandez des pièces à vos clients, suivez leurs dépôts et validez chaque document en
+                  un seul endroit. Créez votre compte professionnel — il sera activé après validation
+                  par un administrateur.
+                </p>
+                <form action={requestProAccount} className="mt-6">
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                  >
+                    Créer un compte professionnel
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   const { data: requestsData } = await supabase
     .from('document_requests')

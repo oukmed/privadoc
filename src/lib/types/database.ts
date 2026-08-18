@@ -304,6 +304,9 @@ export type Database = {
           plan: string
           display_name: string | null
           profession: string | null
+          account_type: string
+          pro_status: string | null
+          is_admin: boolean
           stripe_customer_id: string | null
           subscription_status: string | null
           created_at: string
@@ -315,6 +318,9 @@ export type Database = {
           plan?: string
           display_name?: string | null
           profession?: string | null
+          account_type?: string
+          pro_status?: string | null
+          is_admin?: boolean
           stripe_customer_id?: string | null
           subscription_status?: string | null
           created_at?: string
@@ -326,6 +332,9 @@ export type Database = {
           plan?: string
           display_name?: string | null
           profession?: string | null
+          account_type?: string
+          pro_status?: string | null
+          is_admin?: boolean
           stripe_customer_id?: string | null
           subscription_status?: string | null
           created_at?: string

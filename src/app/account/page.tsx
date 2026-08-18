@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Brand } from '@/app/brand'
 import { signout } from '@/app/auth/actions'
 import { getProfile } from '@/app/account/profile'
-import { setProfessional, updateProProfile } from '@/app/account/actions'
+import { requestProAccount, updateProProfile } from '@/app/account/actions'
 import { RECIPIENT_ROLES, ROLE_LABELS } from '@/lib/roles'
 
 export default async function AccountPage() {
@@ -64,25 +64,32 @@ export default async function AccountPage() {
                       : 'font-medium text-slate-700 dark:text-slate-200'
                   }
                 >
-                  {profile.isProfessional ? 'Professionnel' : 'Privé'}
+                  {profile.isProfessional
+                    ? 'Professionnel'
+                    : profile.proStatus === 'pending'
+                      ? 'Demande professionnelle en attente'
+                      : 'Privé (client)'}
                 </span>
               </p>
             </div>
-            <form action={setProfessional}>
-              {/* Absence of the checkbox = private; presence = professional. */}
-              {profile.isProfessional ? null : <input type="hidden" name="professional" value="on" />}
-              <button
-                type="submit"
-                className={
-                  profile.isProfessional
-                    ? 'rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
-                    : 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500'
-                }
-              >
-                {profile.isProfessional ? 'Repasser en compte privé' : 'Activer le compte professionnel'}
-              </button>
-            </form>
+            {!profile.isProfessional && profile.proStatus !== 'pending' && (
+              <form action={requestProAccount}>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                >
+                  Demander un compte professionnel
+                </button>
+              </form>
+            )}
           </div>
+
+          {!profile.isProfessional && profile.proStatus === 'pending' && (
+            <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              Votre demande de compte professionnel est en cours de validation par un administrateur.
+              Vous recevrez un email dès qu&apos;elle sera approuvée.
+            </p>
+          )}
 
           {profile.isProfessional && (
             <div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
