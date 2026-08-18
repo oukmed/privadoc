@@ -51,4 +51,4 @@ create policy profiles_update_admin on public.profiles
 -- Bootstrap the super-admin. EDIT this email to the account that should approve
 -- pro requests, then it's set once. Safe to re-run.
 update public.profiles set is_admin = true
-  where id = (select id from auth.users where lower(email) = lower('oukmed30066@gmail.com'));
+  where id = (select id from auth.users where lower(email) = lower('webway18@gmail.com'));
