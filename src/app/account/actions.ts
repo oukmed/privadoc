@@ -2,22 +2,30 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { RECIPIENT_ROLES, type RecipientRole } from '@/lib/roles'
+import { RECIPIENT_ROLES, ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 import { sendEmail } from '@/lib/email'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
-function proRequestEmailHtml(requester: string): string {
+function proRequestEmailHtml(who: string, email: string): string {
   return `
     <div style="font-family:system-ui,sans-serif;max-width:520px;margin:auto;color:#1e293b">
       <h2 style="color:#4f46e5">Nouvelle demande de compte professionnel</h2>
-      <p><strong>${requester}</strong> souhaite créer un compte professionnel sur PrivaDoc.</p>
+      <p><strong>${who}</strong> souhaite créer un compte professionnel sur PrivaDoc.</p>
+      <p style="color:#64748b">Email : ${email}</p>
       <p><a href="${APP_URL}/admin" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Valider dans la console d'administration</a></p>
     </div>`
 }
 
 /** Email every super-admin that a new pro account is awaiting validation. */
-async function notifyAdminsOfProRequest(requester: string): Promise<void> {
+async function notifyAdminsOfProRequest(
+  email: string,
+  displayName: string | null,
+  profession: string | null,
+): Promise<void> {
+  const label = profession ? (ROLE_LABELS[profession as RecipientRole] ?? profession) : null
+  const who = displayName ? `${displayName}${label ? ` (${label})` : ''}` : email
+
   const adminDb = createAdminClient()
   const { data: admins } = await adminDb.from('profiles').select('id').eq('is_admin', true)
   for (const a of admins ?? []) {
@@ -27,7 +35,7 @@ async function notifyAdminsOfProRequest(requester: string): Promise<void> {
       await sendEmail({
         to: adminEmail,
         subject: 'Nouvelle demande de compte professionnel — PrivaDoc',
-        html: proRequestEmailHtml(requester),
+        html: proRequestEmailHtml(who, email),
       })
     }
   }
@@ -38,7 +46,7 @@ async function notifyAdminsOfProRequest(requester: string): Promise<void> {
  * pending — an admin must approve it before is_professional becomes true.
  * RLS WITH CHECK requires id = auth.uid().
  */
-export async function requestProAccount(): Promise<void> {
+export async function requestProAccount(formData: FormData): Promise<void> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -53,11 +61,22 @@ export async function requestProAccount(): Promise<void> {
     .maybeSingle()
   if (current?.is_professional || current?.pro_status === 'pending') return
 
+  // Collect identity up front so the admin knows who is requesting.
+  const displayName = String(formData.get('displayName') ?? '').trim().slice(0, 120) || null
+  const rawProfession = String(formData.get('profession') ?? '').trim()
+  const profession = RECIPIENT_ROLES.includes(rawProfession as RecipientRole) ? rawProfession : null
+
   await supabase
     .from('profiles')
-    .upsert({ id: user.id, account_type: 'pro', pro_status: 'pending' })
+    .upsert({
+      id: user.id,
+      account_type: 'pro',
+      pro_status: 'pending',
+      display_name: displayName,
+      profession,
+    })
 
-  await notifyAdminsOfProRequest(user.email ?? 'Un utilisateur')
+  await notifyAdminsOfProRequest(user.email ?? 'Un utilisateur', displayName, profession)
 
   revalidatePath('/pro')
   revalidatePath('/account')

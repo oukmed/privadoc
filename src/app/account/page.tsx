@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Brand } from '@/app/brand'
 import { signout } from '@/app/auth/actions'
 import { getProfile } from '@/app/account/profile'
-import { requestProAccount, updateProProfile } from '@/app/account/actions'
+import { updateProProfile } from '@/app/account/actions'
 import { RECIPIENT_ROLES, ROLE_LABELS } from '@/lib/roles'
 
 export default async function AccountPage() {
@@ -73,14 +73,12 @@ export default async function AccountPage() {
               </p>
             </div>
             {!profile.isProfessional && profile.proStatus !== 'pending' && (
-              <form action={requestProAccount}>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
-                >
-                  Demander un compte professionnel
-                </button>
-              </form>
+              <Link
+                href="/pro"
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+              >
+                Devenir professionnel
+              </Link>
             )}
           </div>
 
