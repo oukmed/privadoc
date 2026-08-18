@@ -1,8 +1,37 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { RECIPIENT_ROLES, type RecipientRole } from '@/lib/roles'
+import { sendEmail } from '@/lib/email'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
+function proRequestEmailHtml(requester: string): string {
+  return `
+    <div style="font-family:system-ui,sans-serif;max-width:520px;margin:auto;color:#1e293b">
+      <h2 style="color:#4f46e5">Nouvelle demande de compte professionnel</h2>
+      <p><strong>${requester}</strong> souhaite créer un compte professionnel sur PrivaDoc.</p>
+      <p><a href="${APP_URL}/admin" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Valider dans la console d'administration</a></p>
+    </div>`
+}
+
+/** Email every super-admin that a new pro account is awaiting validation. */
+async function notifyAdminsOfProRequest(requester: string): Promise<void> {
+  const adminDb = createAdminClient()
+  const { data: admins } = await adminDb.from('profiles').select('id').eq('is_admin', true)
+  for (const a of admins ?? []) {
+    const { data } = await adminDb.auth.admin.getUserById(a.id)
+    const adminEmail = data?.user?.email
+    if (adminEmail) {
+      await sendEmail({
+        to: adminEmail,
+        subject: 'Nouvelle demande de compte professionnel — PrivaDoc',
+        html: proRequestEmailHtml(requester),
+      })
+    }
+  }
+}
 
 /**
  * A client requests a professional account. This only marks the request as
@@ -27,6 +56,8 @@ export async function requestProAccount(): Promise<void> {
   await supabase
     .from('profiles')
     .upsert({ id: user.id, account_type: 'pro', pro_status: 'pending' })
+
+  await notifyAdminsOfProRequest(user.email ?? 'Un utilisateur')
 
   revalidatePath('/pro')
   revalidatePath('/account')
