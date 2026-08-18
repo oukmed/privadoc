@@ -22,6 +22,7 @@ export default async function LoginPage({
       action={login}
       passwordAutoComplete="current-password"
       next={next}
+      forgotHref="/forgot-password"
       footer={
         <>
           Pas encore de compte ?{' '}

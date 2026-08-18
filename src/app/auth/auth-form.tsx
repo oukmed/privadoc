@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 import type { AuthState } from '@/app/auth/actions'
 import { Brand } from '@/app/brand'
 
@@ -15,6 +16,8 @@ interface AuthFormProps {
   footer: ReactNode
   /** Relative path to redirect to after auth (defaults to '/' server-side). */
   next?: string
+  /** When set, shows a "Mot de passe oublié ?" link pointing here. */
+  forgotHref?: string
 }
 
 export function AuthForm({
@@ -25,8 +28,10 @@ export function AuthForm({
   passwordAutoComplete,
   footer,
   next,
+  forgotHref,
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(action, undefined)
+  const [showPassword, setShowPassword] = useState(false)
 
   return (
     <main className="flex min-h-full flex-1 items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50 px-4 py-16 dark:from-slate-950 dark:to-indigo-950">
@@ -60,22 +65,63 @@ export function AuthForm({
             </div>
 
             <div className="space-y-1.5">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-slate-700 dark:text-slate-300"
-              >
-                Mot de passe
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete={passwordAutoComplete}
-                required
-                minLength={8}
-                placeholder="••••••••"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-              />
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
+                  Mot de passe
+                </label>
+                {forgotHref && (
+                  <Link
+                    href={forgotHref}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+                  >
+                    Mot de passe oublié ?
+                  </Link>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={passwordAutoComplete}
+                  required
+                  minLength={8}
+                  placeholder="••••••••"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-10 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  {showPassword ? (
+                    <svg viewBox="0 0 24 24" fill="none" className="size-5" aria-hidden="true">
+                      <path
+                        d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 4.2A9.8 9.8 0 0112 4c5 0 9 4.5 10 8-.3 1-1 2.2-1.9 3.3M6.1 6.1C4 7.4 2.6 9.4 2 12c1 3.5 5 8 10 8 1.6 0 3-.4 4.3-1"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" className="size-5" aria-hidden="true">
+                      <path
+                        d="M2 12c1-3.5 5-8 10-8s9 4.5 10 8c-1 3.5-5 8-10 8s-9-4.5-10-8z"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             {state?.error && (
