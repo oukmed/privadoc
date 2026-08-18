@@ -356,6 +356,7 @@ export type Database = {
           professional_id: string
           client_email: string
           client_id: string | null
+          client_name: string | null
           title: string
           status: string
           professional_name: string | null
@@ -368,6 +369,7 @@ export type Database = {
           professional_id?: string
           client_email: string
           client_id?: string | null
+          client_name?: string | null
           title: string
           status?: string
           professional_name?: string | null
@@ -380,6 +382,7 @@ export type Database = {
           professional_id?: string
           client_email?: string
           client_id?: string | null
+          client_name?: string | null
           title?: string
           status?: string
           professional_name?: string | null

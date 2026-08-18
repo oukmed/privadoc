@@ -14,6 +14,7 @@ interface RequestRow {
   title: string
   status: string
   client_email: string
+  client_name: string | null
   request_items: { status: string }[]
 }
 
@@ -149,19 +150,24 @@ export default async function ProPage() {
 
   const { data: requestsData } = await supabase
     .from('document_requests')
-    .select('id, title, status, client_email, request_items(status)')
+    .select('id, title, status, client_email, client_name, request_items(status)')
     .order('created_at', { ascending: false })
   const requests = (requestsData ?? []) as RequestRow[]
 
   const clients = [...new Set(requests.map((r) => r.client_email.toLowerCase()))]
 
-  // Group requests by client email, preserving the recency order above.
+  // Group requests by client email, preserving the recency order above, and keep
+  // the most recent non-empty name for each client.
   const byClient = new Map<string, RequestRow[]>()
+  const nameByEmail = new Map<string, string>()
   for (const request of requests) {
     const key = request.client_email
     const list = byClient.get(key) ?? []
     list.push(request)
     byClient.set(key, list)
+    if (request.client_name?.trim() && !nameByEmail.has(key)) {
+      nameByEmail.set(key, request.client_name.trim())
+    }
   }
 
   return (
@@ -187,7 +193,9 @@ export default async function ProPage() {
           </div>
         ) : (
           <div className="mt-8 flex flex-col gap-6">
-            {[...byClient.entries()].map(([clientEmail, clientRequests]) => (
+            {[...byClient.entries()].map(([clientEmail, clientRequests]) => {
+              const clientName = nameByEmail.get(clientEmail)
+              return (
               <section
                 key={clientEmail}
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
@@ -195,11 +203,18 @@ export default async function ProPage() {
                 <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-800 dark:bg-slate-800/40">
                   <div className="flex min-w-0 items-center gap-2.5">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
-                      {clientEmail.charAt(0).toUpperCase()}
+                      {(clientName || clientEmail).charAt(0).toUpperCase()}
                     </span>
-                    <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      {clientEmail}
-                    </span>
+                    <div className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        {clientName || clientEmail}
+                      </span>
+                      {clientName && (
+                        <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                          {clientEmail}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span className="shrink-0 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                     {clientRequests.length} {clientRequests.length > 1 ? 'demandes' : 'demande'}
@@ -243,7 +258,8 @@ export default async function ProPage() {
                   })}
                 </ul>
               </section>
-            ))}
+              )
+            })}
           </div>
         )}
       </main>

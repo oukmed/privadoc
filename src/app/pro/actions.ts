@@ -63,6 +63,7 @@ export async function createRequest(
 ): Promise<RequestState> {
   const title = String(formData.get('title') ?? '').trim()
   const clientEmail = String(formData.get('clientEmail') ?? '').trim()
+  const clientName = String(formData.get('clientName') ?? '').trim().slice(0, 120) || null
   if (!title) return { error: 'Donne un titre à la demande.' }
   if (!EMAIL_RE.test(clientEmail)) return { error: 'Adresse email du client invalide.' }
 
@@ -99,6 +100,7 @@ export async function createRequest(
     .insert({
       professional_id: user.id,
       client_email: clientEmail,
+      client_name: clientName,
       title,
       client_id: clientId,
       professional_name: proName,

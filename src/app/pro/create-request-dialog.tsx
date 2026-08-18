@@ -89,6 +89,21 @@ export function CreateRequestDialog() {
             <form action={action} className="flex min-h-0 flex-1 flex-col">
               <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
                 <div>
+                  <label htmlFor="request-client-name" className={labelClass}>
+                    Nom du client
+                  </label>
+                  <input
+                    id="request-client-name"
+                    name="clientName"
+                    type="text"
+                    required
+                    maxLength={120}
+                    placeholder="Ex. Lina Bernard"
+                    className={`mt-1.5 ${inputClass}`}
+                  />
+                </div>
+
+                <div>
                 <label htmlFor="request-client" className={labelClass}>
                   Adresse email du client
                 </label>
