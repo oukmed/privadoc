@@ -216,6 +216,20 @@ export async function reviewItem(formData: FormData): Promise<void> {
     })
   }
 
+  // Close the request when every piece is validated (reopen it otherwise). Keeps
+  // "clients actifs" accurate and stops sending the client back to /requests.
+  const { data: allItems } = await supabase
+    .from('request_items')
+    .select('status')
+    .eq('request_id', item.request_id)
+  const completed =
+    (allItems?.length ?? 0) > 0 && (allItems ?? []).every((i) => i.status === 'validated')
+  await supabase
+    .from('document_requests')
+    .update({ status: completed ? 'completed' : 'open' })
+    .eq('id', item.request_id)
+
+  revalidatePath('/pro')
   revalidatePath(`/pro/${item.request_id}`)
 }
 

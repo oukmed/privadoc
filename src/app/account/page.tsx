@@ -25,7 +25,10 @@ export default async function AccountPage() {
   // Distinct clients across the pro's requests (RLS: professional_id = auth.uid()).
   let activeClients = 0
   if (profile.isProfessional) {
-    const { data: requests } = await supabase.from('document_requests').select('client_email')
+    const { data: requests } = await supabase
+      .from('document_requests')
+      .select('client_email')
+      .eq('status', 'open')
     activeClients = new Set((requests ?? []).map((r) => r.client_email.toLowerCase())).size
   }
 

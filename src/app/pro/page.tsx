@@ -154,7 +154,11 @@ export default async function ProPage() {
     .order('created_at', { ascending: false })
   const requests = (requestsData ?? []) as RequestRow[]
 
-  const clients = [...new Set(requests.map((r) => r.client_email.toLowerCase()))]
+  const clients = [
+    ...new Set(
+      requests.filter((r) => r.status === 'open').map((r) => r.client_email.toLowerCase()),
+    ),
+  ]
 
   // Group requests by client email, preserving the recency order above, and keep
   // the most recent non-empty name for each client.

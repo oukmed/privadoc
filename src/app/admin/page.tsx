@@ -20,6 +20,7 @@ interface ProfileRow {
   profession: string | null
   pro_status: string | null
   is_professional: boolean
+  is_admin: boolean
   plan: string
   subscription_status: string | null
   created_at: string
@@ -28,6 +29,7 @@ interface ProfileRow {
 interface RequestRow {
   professional_id: string
   client_email: string
+  status: string
 }
 
 function professionLabel(profession: string | null): string {
@@ -68,23 +70,24 @@ export default async function AdminPage() {
   const { data: profilesData } = await admin
     .from('profiles')
     .select(
-      'id, display_name, profession, pro_status, is_professional, plan, subscription_status, created_at',
+      'id, display_name, profession, pro_status, is_professional, is_admin, plan, subscription_status, created_at',
     )
     .order('created_at', { ascending: true })
   const profiles = (profilesData ?? []) as ProfileRow[]
 
   const { data: requestsData } = await admin
     .from('document_requests')
-    .select('professional_id, client_email')
+    .select('professional_id, client_email, status')
   const requests = (requestsData ?? []) as RequestRow[]
 
   const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 })
   const emailById = new Map<string, string>()
   for (const u of users?.users ?? []) if (u.email) emailById.set(u.id, u.email)
 
-  // Distinct active clients per professional.
+  // Distinct ACTIVE clients per professional (open requests only — the billing basis).
   const clientsByPro = new Map<string, Set<string>>()
   for (const r of requests) {
+    if (r.status !== 'open') continue
     const set = clientsByPro.get(r.professional_id) ?? new Set<string>()
     set.add(r.client_email.toLowerCase())
     clientsByPro.set(r.professional_id, set)
@@ -98,7 +101,8 @@ export default async function AdminPage() {
   const totalUsers = users?.users.length ?? profiles.length
   const activeSubs = pros.filter((p) => p.subscription_status === 'active').length
   const mrr = activeSubs * MONTHLY_PRICE_EUR
-  const clientAccounts = totalUsers - pros.length
+  const adminCount = profiles.filter((p) => p.is_admin).length
+  const clientAccounts = Math.max(0, totalUsers - pros.length - adminCount)
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
