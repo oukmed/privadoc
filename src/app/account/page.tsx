@@ -5,7 +5,7 @@ import { Brand } from '@/app/brand'
 import { signout } from '@/app/auth/actions'
 import { getProfile } from '@/app/account/profile'
 import { updateProProfile } from '@/app/account/actions'
-import { RECIPIENT_ROLES, ROLE_LABELS } from '@/lib/roles'
+import { RECIPIENT_ROLES, ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 
 export default async function AccountPage() {
   const supabase = await createClient()
@@ -15,6 +15,12 @@ export default async function AccountPage() {
   if (!user) redirect('/login')
 
   const profile = await getProfile()
+
+  // Split a saved profession into "known role" (select) vs free text (custom input).
+  const isKnownProfession =
+    !!profile.profession && RECIPIENT_ROLES.includes(profile.profession as RecipientRole)
+  const professionSelectValue = isKnownProfession ? (profile.profession as string) : ''
+  const customProfessionValue = !isKnownProfession ? (profile.profession ?? '') : ''
 
   // Distinct clients across the pro's requests (RLS: professional_id = auth.uid()).
   let activeClients = 0
@@ -125,16 +131,24 @@ export default async function AccountPage() {
                   <select
                     id="profession"
                     name="profession"
-                    defaultValue={profile.profession ?? ''}
+                    defaultValue={professionSelectValue}
                     className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                   >
-                    <option value="">— Non précisée —</option>
+                    <option value="">— Choisir dans la liste —</option>
                     {RECIPIENT_ROLES.map((role) => (
                       <option key={role} value={role}>
                         {ROLE_LABELS[role]}
                       </option>
                     ))}
                   </select>
+                  <input
+                    name="customProfession"
+                    type="text"
+                    maxLength={60}
+                    defaultValue={customProfessionValue}
+                    placeholder="Ou saisissez votre profession si absente de la liste"
+                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  />
                 </div>
                 <button
                   type="submit"

@@ -114,19 +114,23 @@ export default async function ProPage() {
                     <select
                       id="profession"
                       name="profession"
-                      required
                       defaultValue=""
                       className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     >
-                      <option value="" disabled>
-                        — Choisir —
-                      </option>
+                      <option value="">— Choisir dans la liste —</option>
                       {RECIPIENT_ROLES.map((role) => (
                         <option key={role} value={role}>
                           {ROLE_LABELS[role]}
                         </option>
                       ))}
                     </select>
+                    <input
+                      name="customProfession"
+                      type="text"
+                      maxLength={60}
+                      placeholder="Ou saisissez votre profession si absente de la liste"
+                      className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    />
                   </div>
                   <button
                     type="submit"

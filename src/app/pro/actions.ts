@@ -7,7 +7,7 @@ import { sendEmail } from '@/lib/email'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 
 function professionLabel(profession: string | null): string | null {
-  return profession ? (ROLE_LABELS[profession as RecipientRole] ?? null) : null
+  return profession ? (ROLE_LABELS[profession as RecipientRole] ?? profession) : null
 }
 
 /** "Maître Dupont (Avocat)" — a human sender identity from name + profession. */

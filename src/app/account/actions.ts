@@ -7,6 +7,17 @@ import { sendEmail } from '@/lib/email'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
+/**
+ * Profession is either a known role key OR a free-text value the user typed when
+ * their profession isn't in the list. A non-empty custom field wins.
+ */
+function resolveProfession(formData: FormData): string | null {
+  const custom = String(formData.get('customProfession') ?? '').trim().slice(0, 60)
+  if (custom) return custom
+  const raw = String(formData.get('profession') ?? '').trim()
+  return RECIPIENT_ROLES.includes(raw as RecipientRole) ? raw : null
+}
+
 function proRequestEmailHtml(who: string, email: string): string {
   return `
     <div style="font-family:system-ui,sans-serif;max-width:520px;margin:auto;color:#1e293b">
@@ -63,8 +74,7 @@ export async function requestProAccount(formData: FormData): Promise<void> {
 
   // Collect identity up front so the admin knows who is requesting.
   const displayName = String(formData.get('displayName') ?? '').trim().slice(0, 120) || null
-  const rawProfession = String(formData.get('profession') ?? '').trim()
-  const profession = RECIPIENT_ROLES.includes(rawProfession as RecipientRole) ? rawProfession : null
+  const profession = resolveProfession(formData)
 
   await supabase
     .from('profiles')
@@ -89,8 +99,7 @@ export async function requestProAccount(formData: FormData): Promise<void> {
  */
 export async function updateProProfile(formData: FormData): Promise<void> {
   const displayName = String(formData.get('displayName') ?? '').trim().slice(0, 120) || null
-  const rawProfession = String(formData.get('profession') ?? '').trim()
-  const profession = RECIPIENT_ROLES.includes(rawProfession as RecipientRole) ? rawProfession : null
+  const profession = resolveProfession(formData)
 
   const supabase = await createClient()
   const {

@@ -7,7 +7,7 @@ import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 
 function senderLabel(name: string | null, profession: string | null): string | null {
   if (!name) return null
-  const role = profession ? (ROLE_LABELS[profession as RecipientRole] ?? null) : null
+  const role = profession ? (ROLE_LABELS[profession as RecipientRole] ?? profession) : null
   return role ? `${name} · ${role}` : name
 }
 
