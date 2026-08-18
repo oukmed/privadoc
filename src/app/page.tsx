@@ -65,6 +65,10 @@ export default async function Home({
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // The super-admin has a dedicated platform console — never the client documents UI.
+  const { isAdmin } = await getProfile()
+  if (isAdmin) redirect('/admin')
+
   const { data: allFolders, error: foldersError } = await supabase
     .from('folders')
     .select('id, name, parent_id')
@@ -128,7 +132,6 @@ export default async function Home({
   }))
 
   const hasError = foldersError || documentsError
-  const { isAdmin } = await getProfile()
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
@@ -160,14 +163,6 @@ export default async function Home({
             >
               Compte
             </Link>
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
-              >
-                Admin
-              </Link>
-            )}
           </nav>
           <NotificationsBell />
           <form action={signout}>
