@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { Brand } from '@/app/brand'
 import { signout } from '@/app/auth/actions'
 import { getProfile } from '@/app/account/profile'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
@@ -13,6 +12,7 @@ import {
 
 // Free tier: up to this many active clients; beyond it a paid subscription is required.
 const FREE_CLIENT_LIMIT = 5
+const MONTHLY_PRICE_EUR = 35
 
 interface ProfileRow {
   id: string
@@ -32,6 +32,23 @@ interface RequestRow {
 
 function professionLabel(profession: string | null): string {
   return profession ? (ROLE_LABELS[profession as RecipientRole] ?? profession) : '—'
+}
+
+function StatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        {label}
+      </p>
+      <p
+        className={`mt-1 text-2xl font-bold tracking-tight ${
+          accent ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-slate-50'
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  )
 }
 
 export default async function AdminPage() {
@@ -77,18 +94,31 @@ export default async function AdminPage() {
   const pending = profiles.filter((p) => p.pro_status === 'pending' && !p.is_professional)
   const pros = profiles.filter((p) => p.is_professional)
 
+  // Platform statistics.
+  const totalUsers = users?.users.length ?? profiles.length
+  const activeSubs = pros.filter((p) => p.subscription_status === 'active').length
+  const mrr = activeSubs * MONTHLY_PRICE_EUR
+  const clientAccounts = totalUsers - pros.length
+
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
-        <Brand />
-        <div className="flex items-center gap-4">
-          <span className="hidden text-sm text-slate-500 sm:inline dark:text-slate-400">
-            {user.email}
+      {/* Distinct admin console shell — not the client/pro header. */}
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-800 bg-slate-900 px-6 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+            P
           </span>
+          <div className="leading-tight">
+            <p className="text-sm font-semibold text-white">PrivaDoc</p>
+            <p className="text-xs font-medium text-indigo-300">Console d&apos;administration</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="hidden text-sm text-slate-400 sm:inline">{user.email}</span>
           <form action={signout}>
             <button
               type="submit"
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
             >
               Se déconnecter
             </button>
@@ -96,16 +126,26 @@ export default async function AdminPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-          Administration
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+          Tableau de bord plateforme
         </h1>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Validez les demandes de comptes professionnels et gérez les abonnements.
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Vue d&apos;ensemble, validation des comptes professionnels et gestion des abonnements.
         </p>
 
+        {/* Statistics */}
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatCard label="Utilisateurs" value={String(totalUsers)} />
+          <StatCard label="Clients" value={String(clientAccounts)} />
+          <StatCard label="Pros actifs" value={String(pros.length)} />
+          <StatCard label="En attente" value={String(pending.length)} accent={pending.length > 0} />
+          <StatCard label="Abonnements" value={String(activeSubs)} />
+          <StatCard label="Revenu / mois" value={`${mrr} €`} accent />
+        </div>
+
         {/* Pending pro requests */}
-        <section className="mt-8">
+        <section className="mt-10">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Demandes en attente ({pending.length})
           </h2>
@@ -204,7 +244,7 @@ export default async function AdminPage() {
                         </span>
                         {needsPayment && (
                           <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                            Abonnement requis (35 €/mois)
+                            Abonnement requis ({MONTHLY_PRICE_EUR} €/mois)
                           </span>
                         )}
                       </p>
