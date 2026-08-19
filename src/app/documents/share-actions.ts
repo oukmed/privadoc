@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { sendEmail } from '@/lib/email'
+import { sendEmail, escapeHtml } from '@/lib/email'
 
 export type ShareState =
   | {
@@ -78,15 +78,6 @@ function expiresAtFor(expiry: Expiry): string | null {
 
 function isExpired(expiresAt: string | null): boolean {
   return expiresAt !== null && new Date(expiresAt).getTime() < Date.now()
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
 }
 
 interface ShareInput {

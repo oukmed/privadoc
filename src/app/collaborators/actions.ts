@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { sendEmail } from '@/lib/email'
+import { sendEmail, escapeHtml } from '@/lib/email'
 import { RECIPIENT_ROLES, ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 
 export type CollaboratorState = { error?: string; message?: string } | undefined
@@ -27,13 +27,6 @@ function expiresAtFor(expiry: Expiry): string | null {
 
 function parseRole(value: string): RecipientRole {
   return (RECIPIENT_ROLES as readonly string[]).includes(value) ? (value as RecipientRole) : 'autre'
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
-  )
 }
 
 function inviteEmailHtml(args: {

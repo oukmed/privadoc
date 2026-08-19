@@ -67,20 +67,19 @@ export default async function AdminPage() {
   // clients would otherwise be blocked by per-user RLS.
   const admin = createAdminClient()
 
-  const { data: profilesData } = await admin
-    .from('profiles')
-    .select(
-      'id, display_name, profession, pro_status, is_professional, is_admin, plan, subscription_status, created_at',
-    )
-    .order('created_at', { ascending: true })
+  // These three reads are independent — run them in parallel.
+  const [{ data: profilesData }, { data: requestsData }, { data: users }] = await Promise.all([
+    admin
+      .from('profiles')
+      .select(
+        'id, display_name, profession, pro_status, is_professional, is_admin, plan, subscription_status, created_at',
+      )
+      .order('created_at', { ascending: true }),
+    admin.from('document_requests').select('professional_id, client_email, status'),
+    admin.auth.admin.listUsers({ perPage: 1000 }),
+  ])
   const profiles = (profilesData ?? []) as ProfileRow[]
-
-  const { data: requestsData } = await admin
-    .from('document_requests')
-    .select('professional_id, client_email, status')
   const requests = (requestsData ?? []) as RequestRow[]
-
-  const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 })
   const emailById = new Map<string, string>()
   for (const u of users?.users ?? []) if (u.email) emailById.set(u.id, u.email)
 

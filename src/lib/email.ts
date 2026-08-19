@@ -1,6 +1,14 @@
 import 'server-only'
 import nodemailer from 'nodemailer'
 
+/** Escape user-controlled values before interpolating them into email HTML. */
+export function escapeHtml(value: string): string {
+  return value.replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+  )
+}
+
 interface SendEmailArgs {
   to: string
   subject: string

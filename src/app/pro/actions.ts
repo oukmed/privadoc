@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { notify } from '@/lib/notify'
-import { sendEmail } from '@/lib/email'
+import { sendEmail, escapeHtml } from '@/lib/email'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 
 function professionLabel(profession: string | null): string | null {
@@ -21,16 +21,6 @@ export type RequestState = { error?: string; message?: string } | undefined
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
 const REQUEST_RATE_LIMIT_PER_HOUR = 30
-
-/** Escape user-controlled values before interpolating them into email HTML. */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
 
 function requestEmailHtml(args: {
   sender: string
