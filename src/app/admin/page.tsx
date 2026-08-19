@@ -3,16 +3,11 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { signout } from '@/app/auth/actions'
 import { getProfile } from '@/app/account/profile'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
-import {
-  approvePro,
-  rejectPro,
-  activateSubscription,
-  deactivateSubscription,
-} from '@/app/admin/actions'
+import { approvePro, rejectPro } from '@/app/admin/actions'
+import { AdminAccounts, type ProItem, type ClientItem } from '@/app/admin/accounts'
 
-// Free tier: up to this many active clients; beyond it a paid subscription is required.
-const FREE_CLIENT_LIMIT = 5
 const MONTHLY_PRICE_EUR = 35
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 interface ProfileRow {
   id: string
@@ -29,11 +24,18 @@ interface ProfileRow {
 interface RequestRow {
   professional_id: string
   client_email: string
+  client_name: string | null
   status: string
 }
 
 function professionLabel(profession: string | null): string {
   return profession ? (ROLE_LABELS[profession as RecipientRole] ?? profession) : '—'
+}
+
+/** Count profiles created within the last 30 days. Kept out of render (reads the clock). */
+function countNewUsers(profiles: ProfileRow[]): number {
+  const cutoff = Date.now() - THIRTY_DAYS_MS
+  return profiles.filter((p) => new Date(p.created_at).getTime() >= cutoff).length
 }
 
 function StatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
@@ -63,11 +65,10 @@ export default async function AdminPage() {
   const profile = await getProfile()
   if (!profile.isAdmin) redirect('/')
 
-  // Service-role client: this page is admin-only, and aggregating every pro's
-  // clients would otherwise be blocked by per-user RLS.
+  // Service-role client: admin-only page; aggregating every pro's data would
+  // otherwise be blocked by per-user RLS.
   const admin = createAdminClient()
 
-  // These three reads are independent — run them in parallel.
   const [{ data: profilesData }, { data: requestsData }, { data: users }] = await Promise.all([
     admin
       .from('profiles')
@@ -75,7 +76,7 @@ export default async function AdminPage() {
         'id, display_name, profession, pro_status, is_professional, is_admin, plan, subscription_status, created_at',
       )
       .order('created_at', { ascending: true }),
-    admin.from('document_requests').select('professional_id, client_email, status'),
+    admin.from('document_requests').select('professional_id, client_email, client_name, status'),
     admin.auth.admin.listUsers({ perPage: 1000 }),
   ])
   const profiles = (profilesData ?? []) as ProfileRow[]
@@ -83,29 +84,65 @@ export default async function AdminPage() {
   const emailById = new Map<string, string>()
   for (const u of users?.users ?? []) if (u.email) emailById.set(u.id, u.email)
 
-  // Distinct ACTIVE clients per professional (open requests only — the billing basis).
-  const clientsByPro = new Map<string, Set<string>>()
+  // Per-pro aggregates.
+  const activeClientsByPro = new Map<string, Set<string>>() // open requests = billing basis
+  const totalRequestsByPro = new Map<string, number>()
+  // Per-client aggregates (keyed by lowercased email).
+  const requestsByClientEmail = new Map<string, number>()
+  const nameByClientEmail = new Map<string, string>()
   for (const r of requests) {
-    if (r.status !== 'open') continue
-    const set = clientsByPro.get(r.professional_id) ?? new Set<string>()
-    set.add(r.client_email.toLowerCase())
-    clientsByPro.set(r.professional_id, set)
+    totalRequestsByPro.set(r.professional_id, (totalRequestsByPro.get(r.professional_id) ?? 0) + 1)
+    if (r.status === 'open') {
+      const set = activeClientsByPro.get(r.professional_id) ?? new Set<string>()
+      set.add(r.client_email.toLowerCase())
+      activeClientsByPro.set(r.professional_id, set)
+    }
+    const key = r.client_email.toLowerCase()
+    requestsByClientEmail.set(key, (requestsByClientEmail.get(key) ?? 0) + 1)
+    if (r.client_name?.trim() && !nameByClientEmail.has(key)) {
+      nameByClientEmail.set(key, r.client_name.trim())
+    }
   }
-  const clientCount = (id: string): number => clientsByPro.get(id)?.size ?? 0
 
   const pending = profiles.filter((p) => p.pro_status === 'pending' && !p.is_professional)
-  const pros = profiles.filter((p) => p.is_professional)
+
+  const pros: ProItem[] = profiles
+    .filter((p) => p.is_professional)
+    .map((p) => ({
+      id: p.id,
+      name: p.display_name?.trim() || '',
+      email: emailById.get(p.id) ?? p.id,
+      profession: professionLabel(p.profession),
+      activeClients: activeClientsByPro.get(p.id)?.size ?? 0,
+      totalRequests: totalRequestsByPro.get(p.id) ?? 0,
+      subscribed: p.subscription_status === 'active',
+      createdAt: p.created_at,
+    }))
+
+  const clients: ClientItem[] = profiles
+    .filter((p) => !p.is_professional && !p.is_admin)
+    .map((p) => {
+      const email = emailById.get(p.id) ?? p.id
+      const key = email.toLowerCase()
+      return {
+        id: p.id,
+        name: nameByClientEmail.get(key) ?? null,
+        email,
+        requestsReceived: requestsByClientEmail.get(key) ?? 0,
+        createdAt: p.created_at,
+      }
+    })
 
   // Platform statistics.
   const totalUsers = users?.users.length ?? profiles.length
-  const activeSubs = pros.filter((p) => p.subscription_status === 'active').length
+  const activeSubs = pros.filter((p) => p.subscribed).length
   const mrr = activeSubs * MONTHLY_PRICE_EUR
-  const adminCount = profiles.filter((p) => p.is_admin).length
-  const clientAccounts = Math.max(0, totalUsers - pros.length - adminCount)
+  const openRequests = requests.filter((r) => r.status === 'open').length
+  const completedRequests = requests.filter((r) => r.status === 'completed').length
+  const newUsers30d = countNewUsers(profiles)
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-      {/* Distinct admin console shell — not the client/pro header. */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-800 bg-slate-900 px-6 py-3.5">
         <div className="flex items-center gap-2.5">
           <span className="flex size-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
@@ -134,17 +171,21 @@ export default async function AdminPage() {
           Tableau de bord plateforme
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Vue d&apos;ensemble, validation des comptes professionnels et gestion des abonnements.
+          Vue d&apos;ensemble, comptes, validation des pros et gestion des abonnements.
         </p>
 
         {/* Statistics */}
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <StatCard label="Utilisateurs" value={String(totalUsers)} />
-          <StatCard label="Clients" value={String(clientAccounts)} />
+          <StatCard label="Clients" value={String(clients.length)} />
           <StatCard label="Pros actifs" value={String(pros.length)} />
-          <StatCard label="En attente" value={String(pending.length)} accent={pending.length > 0} />
           <StatCard label="Abonnements" value={String(activeSubs)} />
           <StatCard label="Revenu / mois" value={`${mrr} €`} accent />
+          <StatCard label="En attente" value={String(pending.length)} accent={pending.length > 0} />
+          <StatCard label="Demandes" value={String(requests.length)} />
+          <StatCard label="Dossiers en cours" value={String(openRequests)} />
+          <StatCard label="Dossiers terminés" value={String(completedRequests)} />
+          <StatCard label="Nouveaux (30j)" value={String(newUsers30d)} />
         </div>
 
         {/* Pending pro requests */}
@@ -202,75 +243,8 @@ export default async function AdminPage() {
           )}
         </section>
 
-        {/* Active professionals + subscriptions */}
-        <section className="mt-10">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            Comptes professionnels ({pros.length})
-          </h2>
-          {pros.length === 0 ? (
-            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-              <p className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                Aucun compte professionnel actif.
-              </p>
-            </div>
-          ) : (
-            <ul className="mt-3 flex flex-col gap-3">
-              {pros.map((row) => {
-                const count = clientCount(row.id)
-                const subscribed = row.subscription_status === 'active'
-                const overLimit = count > FREE_CLIENT_LIMIT
-                const needsPayment = overLimit && !subscribed
-                return (
-                  <li
-                    key={row.id}
-                    className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {row.display_name?.trim() || emailById.get(row.id) || 'Sans nom'}
-                      </p>
-                      <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                        {emailById.get(row.id) ?? row.id} · {professionLabel(row.profession)}
-                      </p>
-                      <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {count}/{FREE_CLIENT_LIMIT} clients
-                        </span>
-                        <span
-                          className={
-                            subscribed
-                              ? 'inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                              : 'inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                          }
-                        >
-                          {subscribed ? 'Abonnement actif' : 'Gratuit'}
-                        </span>
-                        {needsPayment && (
-                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                            Abonnement requis ({MONTHLY_PRICE_EUR} €/mois)
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <form action={subscribed ? deactivateSubscription : activateSubscription}>
-                      <input type="hidden" name="profileId" value={row.id} />
-                      <button
-                        type="submit"
-                        className={
-                          subscribed
-                            ? 'rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
-                            : 'rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500'
-                        }
-                      >
-                        {subscribed ? "Désactiver l'abonnement" : "Valider l'abonnement"}
-                      </button>
-                    </form>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </section>
+        {/* Searchable accounts (pros + clients) */}
+        <AdminAccounts pros={pros} clients={clients} />
       </main>
     </div>
   )

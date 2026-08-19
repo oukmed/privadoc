@@ -104,3 +104,25 @@ export async function deactivateSubscription(formData: FormData): Promise<void> 
 
   revalidatePath('/admin')
 }
+
+/** Revoke a professional account entirely — the user becomes a private client. */
+export async function revokePro(formData: FormData): Promise<void> {
+  const profileId = String(formData.get('profileId') ?? '').trim()
+  if (!profileId) return
+
+  const supabase = await createClient()
+  if (!(await requireAdmin(supabase))) return
+
+  await supabase
+    .from('profiles')
+    .update({
+      is_professional: false,
+      account_type: 'private',
+      pro_status: null,
+      plan: 'free',
+      subscription_status: 'inactive',
+    })
+    .eq('id', profileId)
+
+  revalidatePath('/admin')
+}
