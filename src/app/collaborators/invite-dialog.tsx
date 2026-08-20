@@ -7,13 +7,15 @@ import { RECIPIENT_ROLES, ROLE_LABELS } from '@/lib/roles'
 interface InviteDialogProps {
   documents: { id: string; title: string }[]
   folders: { id: string; name: string }[]
+  /** When true, the inviter has no saved name yet — ask for it so it can be shown. */
+  needsName?: boolean
 }
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
 const labelClass = 'block text-sm font-medium text-slate-700 dark:text-slate-300'
 
-export function InviteDialog({ documents, folders }: InviteDialogProps) {
+export function InviteDialog({ documents, folders, needsName }: InviteDialogProps) {
   const [open, setOpen] = useState(false)
   const [state, action, pending] = useActionState<CollaboratorState, FormData>(
     inviteCollaborator,
@@ -99,6 +101,22 @@ export function InviteDialog({ documents, folders }: InviteDialogProps) {
 
             {hasTargets ? (
               <form action={action} className="mt-5 flex min-h-0 flex-col gap-4">
+                {needsName && (
+                  <div>
+                    <label htmlFor="invite-your-name" className={labelClass}>
+                      Votre nom (affiché au destinataire)
+                    </label>
+                    <input
+                      id="invite-your-name"
+                      name="inviterName"
+                      type="text"
+                      required
+                      maxLength={120}
+                      placeholder="Jean Dupont"
+                      className={`mt-1.5 ${inputClass}`}
+                    />
+                  </div>
+                )}
                 <div>
                   <label htmlFor="invite-email" className={labelClass}>
                     Adresse email du collaborateur

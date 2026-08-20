@@ -6,6 +6,7 @@ import { InviteDialog } from '@/app/collaborators/invite-dialog'
 import { revokeAccess, removeCollaborator } from '@/app/collaborators/actions'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 import { resolveDisplayNames } from '@/lib/names'
+import { getProfile } from '@/app/account/profile'
 
 interface AccessRow {
   id: string
@@ -57,6 +58,9 @@ export default async function CollaboratorsPage() {
   // users' profiles, so this resolves via the service-role helper).
   const nameByUserId = await resolveDisplayNames((collaborators ?? []).map((c) => c.user_id))
 
+  // Ask the inviter for their name in the dialog if they haven't set one.
+  const { displayName } = await getProfile()
+
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
@@ -79,6 +83,7 @@ export default async function CollaboratorsPage() {
           <InviteDialog
             documents={(documents ?? []).map((d) => ({ id: d.id, title: d.title }))}
             folders={(folders ?? []).map((f) => ({ id: f.id, name: f.name }))}
+            needsName={!displayName}
           />
         </div>
 

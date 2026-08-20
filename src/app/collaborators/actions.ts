@@ -151,14 +151,20 @@ export async function inviteCollaborator(
   const existing = Boolean(linkedUserId)
   const target = existing ? `${APP_URL}/login` : `${APP_URL}/signup`
 
-  // Prefer the inviter's name (pros set one); fall back to their email.
+  // Prefer the inviter's saved name; otherwise accept one typed in the dialog and
+  // persist it so it shows on future shares too. Fall back to their email.
   const { data: inviterProfile } = await supabase
     .from('profiles')
     .select('display_name')
     .eq('id', user.id)
     .maybeSingle()
   const inviterEmail = user.email ?? 'Un utilisateur'
-  const inviterName = inviterProfile?.display_name?.trim() || inviterEmail
+  const savedName = inviterProfile?.display_name?.trim()
+  const typedName = String(formData.get('inviterName') ?? '').trim().slice(0, 120)
+  if (!savedName && typedName) {
+    await supabase.from('profiles').upsert({ id: user.id, display_name: typedName })
+  }
+  const inviterName = savedName || typedName || inviterEmail
 
   const { error: emailError } = await sendEmail({
     to: email,
