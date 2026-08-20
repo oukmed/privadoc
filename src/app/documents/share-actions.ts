@@ -143,12 +143,13 @@ async function createMultiDocShare(
   return { share: { token: share.token, url: `${APP_URL}/share/${share.token}` } }
 }
 
-function shareEmailHtml(args: { message: string; url: string; expiry: Expiry }): string {
+function shareEmailHtml(args: { sender: string; message: string; url: string; expiry: Expiry }): string {
   const messageBlock = args.message.trim()
     ? `<p style="white-space:pre-wrap;margin:0 0 24px;color:#334155;font-size:15px;line-height:1.6">${escapeHtml(args.message)}</p>`
     : ''
   return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:24px">
-    <p style="font-size:18px;font-weight:600;color:#0f172a;margin:0 0 16px">Documents partagés avec vous</p>
+    <p style="font-size:18px;font-weight:600;color:#0f172a;margin:0 0 8px">Documents partagés avec vous</p>
+    <p style="margin:0 0 16px;color:#334155;font-size:15px">Partagé par <strong>${escapeHtml(args.sender)}</strong></p>
     ${messageBlock}
     <a href="${args.url}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:8px">Voir les documents</a>
     <p style="margin:24px 0 0;color:#64748b;font-size:13px">${EXPIRY_LABELS[args.expiry]}</p>
@@ -261,10 +262,25 @@ export async function sendShareEmail(
 
   revalidatePath('/')
 
+  // Sender identity: saved name, else a name typed in the dialog (persisted for
+  // next time), else the email.
+  const { data: senderProfile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', user.id)
+    .maybeSingle()
+  const senderEmail = user.email ?? 'Un utilisateur'
+  const savedName = senderProfile?.display_name?.trim()
+  const typedName = String(formData.get('senderName') ?? '').trim().slice(0, 120)
+  if (!savedName && typedName) {
+    await supabase.from('profiles').upsert({ id: user.id, display_name: typedName })
+  }
+  const sender = savedName || typedName || senderEmail
+
   const { error: emailError } = await sendEmail({
     to: recipientEmail,
     subject: subject || 'Documents partagés via PrivaDoc',
-    html: shareEmailHtml({ message, url: share.url, expiry }),
+    html: shareEmailHtml({ sender, message, url: share.url, expiry }),
   })
   if (emailError) return { error: emailError }
 

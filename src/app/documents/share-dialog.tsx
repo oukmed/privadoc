@@ -7,6 +7,8 @@ interface ShareDialogProps {
   documentIds: string[]
   open: boolean
   onClose: () => void
+  /** When true, the sender has no saved name yet — ask for it (email tab). */
+  needsName?: boolean
 }
 
 type Tab = 'link' | 'email'
@@ -38,7 +40,7 @@ function HiddenIds({ ids }: { ids: string[] }) {
   )
 }
 
-export function ShareDialog({ documentIds, open, onClose }: ShareDialogProps) {
+export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDialogProps) {
   const [tab, setTab] = useState<Tab>('link')
   const [copied, setCopied] = useState(false)
   const [linkState, linkAction, linkPending] = useActionState<ShareState, FormData>(
@@ -222,6 +224,22 @@ export function ShareDialog({ documentIds, open, onClose }: ShareDialogProps) {
             ) : (
               <form action={emailAction} className="flex flex-col gap-4">
                 <HiddenIds ids={documentIds} />
+                {needsName && (
+                  <div>
+                    <label htmlFor="email-sender-name" className={labelClass}>
+                      Votre nom (affiché au destinataire)
+                    </label>
+                    <input
+                      id="email-sender-name"
+                      name="senderName"
+                      type="text"
+                      required
+                      maxLength={120}
+                      placeholder="Jean Dupont"
+                      className={`mt-1.5 ${inputClass}`}
+                    />
+                  </div>
+                )}
                 <div>
                   <label htmlFor="email-recipient" className={labelClass}>
                     Adresse email du destinataire

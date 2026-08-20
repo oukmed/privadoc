@@ -66,7 +66,7 @@ export default async function Home({
   if (!user) redirect('/login')
 
   // The super-admin has a dedicated platform console — never the client documents UI.
-  const { isAdmin } = await getProfile()
+  const { isAdmin, displayName } = await getProfile()
   if (isAdmin) redirect('/admin')
 
   const { data: allFolders, error: foldersError } = await supabase
@@ -229,6 +229,7 @@ export default async function Home({
           </div>
         ) : (
           <DocumentList
+            senderHasName={Boolean(displayName)}
             folders={subfolders.map((folder) => ({ id: folder.id, name: folder.name }))}
             documents={(documents ?? []).map((doc) => ({
               id: doc.id,

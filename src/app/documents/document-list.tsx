@@ -28,6 +28,8 @@ interface DocumentListProps {
   folders: FolderItem[]
   documents: DocumentItem[]
   sharedDocuments?: DocumentItem[]
+  /** Whether the current user already has a saved name (drives the share dialog prompt). */
+  senderHasName?: boolean
 }
 
 const ZIP_ENDPOINT = '/api/documents/zip'
@@ -85,7 +87,12 @@ function toggleInSet(set: Set<string>, id: string): Set<string> {
 
 const rowCheckboxClass = 'size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600'
 
-export function DocumentList({ folders, documents, sharedDocuments }: DocumentListProps) {
+export function DocumentList({
+  folders,
+  documents,
+  sharedDocuments,
+  senderHasName,
+}: DocumentListProps) {
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set())
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set())
   const [shareTargets, setShareTargets] = useState<string[] | null>(null)
@@ -437,6 +444,7 @@ export function DocumentList({ folders, documents, sharedDocuments }: DocumentLi
           documentIds={shareTargets}
           open
           onClose={() => setShareTargets(null)}
+          needsName={!senderHasName}
         />
       )}
     </>
