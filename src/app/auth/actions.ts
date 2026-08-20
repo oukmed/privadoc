@@ -136,15 +136,6 @@ export async function signup(_prevState: AuthState, formData: FormData): Promise
   const hashedToken = data?.properties?.hashed_token
   if (!hashedToken) return { error: 'Impossible de créer le compte. Réessaie.' }
 
-  // Store the name so it shows everywhere (shares, invites, requests). The
-  // signup trigger already created the profile row; upsert is defensive.
-  const displayName = String(formData.get('displayName') ?? '').trim().slice(0, 120)
-  if (displayName && data.user?.id) {
-    await createAdminClient()
-      .from('profiles')
-      .upsert({ id: data.user.id, display_name: displayName })
-  }
-
   const next = safeNext(formData.get('next'))
   const url = `${APP_URL}/auth/confirm?token_hash=${hashedToken}&type=signup&next=${encodeURIComponent(next)}`
   const { error: emailError } = await sendEmail({
