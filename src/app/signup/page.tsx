@@ -22,6 +22,7 @@ export default async function SignupPage({
       action={signup}
       passwordAutoComplete="new-password"
       next={next}
+      showName
       footer={
         <>
           Déjà un compte ?{' '}

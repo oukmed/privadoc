@@ -5,6 +5,7 @@ import { Brand } from '@/app/brand'
 import { InviteDialog } from '@/app/collaborators/invite-dialog'
 import { revokeAccess, removeCollaborator } from '@/app/collaborators/actions'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
+import { resolveDisplayNames } from '@/lib/names'
 
 interface AccessRow {
   id: string
@@ -52,6 +53,10 @@ export default async function CollaboratorsPage() {
     accessByCollaborator.set(row.collaborator_id, list)
   }
 
+  // Names of collaborators who already have an account (RLS blocks reading other
+  // users' profiles, so this resolves via the service-role helper).
+  const nameByUserId = await resolveDisplayNames((collaborators ?? []).map((c) => c.user_id))
+
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
@@ -92,6 +97,7 @@ export default async function CollaboratorsPage() {
           <ul className="mt-8 flex flex-col gap-4">
             {(collaborators ?? []).map((collaborator) => {
               const grants = accessByCollaborator.get(collaborator.id) ?? []
+              const name = collaborator.user_id ? nameByUserId.get(collaborator.user_id) : undefined
               return (
                 <li
                   key={collaborator.id}
@@ -101,7 +107,7 @@ export default async function CollaboratorsPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate font-medium text-slate-900 dark:text-slate-100">
-                          {collaborator.email}
+                          {name || collaborator.email}
                         </p>
                         <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
                           {roleLabel(collaborator.role)}
@@ -116,6 +122,11 @@ export default async function CollaboratorsPage() {
                           {collaborator.accepted_at ? 'Actif' : 'Invité'}
                         </span>
                       </div>
+                      {name && (
+                        <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">
+                          {collaborator.email}
+                        </p>
+                      )}
                     </div>
                     <form action={removeCollaborator}>
                       <input type="hidden" name="collaboratorId" value={collaborator.id} />

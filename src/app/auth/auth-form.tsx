@@ -18,6 +18,8 @@ interface AuthFormProps {
   next?: string
   /** When set, shows a "Mot de passe oublié ?" link pointing here. */
   forgotHref?: string
+  /** When true, shows a required "Nom" field (name="displayName") — used on signup. */
+  showName?: boolean
 }
 
 export function AuthForm({
@@ -29,6 +31,7 @@ export function AuthForm({
   footer,
   next,
   forgotHref,
+  showName,
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(action, undefined)
   const [showPassword, setShowPassword] = useState(false)
@@ -46,6 +49,26 @@ export function AuthForm({
 
           <form action={formAction} className="mt-6 space-y-4">
             {next && <input type="hidden" name="next" value={next} />}
+            {showName && (
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="displayName"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                >
+                  Nom complet ou cabinet
+                </label>
+                <input
+                  id="displayName"
+                  name="displayName"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  maxLength={120}
+                  placeholder="Jean Dupont"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                />
+              </div>
+            )}
             <div className="space-y-1.5">
               <label
                 htmlFor="email"

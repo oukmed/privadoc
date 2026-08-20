@@ -98,13 +98,10 @@ export default async function AccountPage() {
             </p>
           )}
 
-          {profile.isProfessional && (
-            <div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                Votre identité (visible par vos clients)
-              </h3>
+          <div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Votre nom</h3>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Ce nom et cette profession apparaissent dans les emails et l&apos;espace de vos clients.
+                Ce nom vous identifie lors des partages, invitations et demandes de pièces.
               </p>
               <form action={updateProProfile} className="mt-4 flex flex-col gap-4">
                 <div>
@@ -124,35 +121,37 @@ export default async function AccountPage() {
                     className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                   />
                 </div>
-                <div>
-                  <label
-                    htmlFor="profession"
-                    className="block text-sm font-medium text-slate-700 dark:text-slate-300"
-                  >
-                    Profession
-                  </label>
-                  <select
-                    id="profession"
-                    name="profession"
-                    defaultValue={professionSelectValue}
-                    className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  >
-                    <option value="">— Choisir dans la liste —</option>
-                    {RECIPIENT_ROLES.map((role) => (
-                      <option key={role} value={role}>
-                        {ROLE_LABELS[role]}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    name="customProfession"
-                    type="text"
-                    maxLength={60}
-                    defaultValue={customProfessionValue}
-                    placeholder="Ou saisissez votre profession si absente de la liste"
-                    className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  />
-                </div>
+                {profile.isProfessional && (
+                  <div>
+                    <label
+                      htmlFor="profession"
+                      className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                    >
+                      Profession
+                    </label>
+                    <select
+                      id="profession"
+                      name="profession"
+                      defaultValue={professionSelectValue}
+                      className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    >
+                      <option value="">— Choisir dans la liste —</option>
+                      {RECIPIENT_ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {ROLE_LABELS[role]}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      name="customProfession"
+                      type="text"
+                      maxLength={60}
+                      defaultValue={customProfessionValue}
+                      placeholder="Ou saisissez votre profession si absente de la liste"
+                      className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                    />
+                  </div>
+                )}
                 <button
                   type="submit"
                   className="self-start rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
@@ -160,8 +159,7 @@ export default async function AccountPage() {
                   Enregistrer
                 </button>
               </form>
-            </div>
-          )}
+          </div>
 
           {profile.isProfessional && (
             <div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
