@@ -103,30 +103,53 @@ export async function login(_prevState: AuthState, formData: FormData): Promise<
   redirect(target)
 }
 
+function confirmEmailHtml(url: string): string {
+  return `
+    <div style="font-family:system-ui,sans-serif;max-width:520px;margin:auto;color:#1e293b">
+      <h2 style="color:#4f46e5">Confirme ton adresse email</h2>
+      <p>Bienvenue sur PrivaDoc ! Clique sur le bouton ci-dessous pour activer ton compte :</p>
+      <p><a href="${url}" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Confirmer mon adresse</a></p>
+      <p style="color:#64748b;font-size:13px">Si tu n'es pas à l'origine de cette inscription, ignore cet email.</p>
+    </div>`
+}
+
+/**
+ * Creates the account UNCONFIRMED and emails a confirmation link via our own
+ * Gmail mailer (Supabase has no SMTP). The user must click the link before they
+ * can sign in — `signInWithPassword` returns "Email not confirmed" otherwise.
+ */
 export async function signup(_prevState: AuthState, formData: FormData): Promise<AuthState> {
   const { email, password } = readCredentials(formData)
 
   const validationError = validate(email, password)
   if (validationError) return { error: validationError }
 
-  // Create the account already confirmed (server-side, admin) so signup never
-  // depends on Supabase's confirmation email / SMTP, then sign in immediately.
-  const { error: createError } = await createAdminClient().auth.admin.createUser({
+  // generateLink({type:'signup'}) creates the unconfirmed user AND returns the
+  // confirmation token — we deliver it ourselves.
+  const { data, error } = await createAdminClient().auth.admin.generateLink({
+    type: 'signup',
     email,
     password,
-    email_confirm: true,
   })
-  if (createError) return { error: translateAuthError(createError.message) }
+  if (error) return { error: translateAuthError(error.message) }
 
-  const supabase = await createClient()
-  const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-  if (signInError) return { error: translateAuthError(signInError.message) }
+  const hashedToken = data?.properties?.hashed_token
+  if (!hashedToken) return { error: 'Impossible de créer le compte. Réessaie.' }
 
-  const explicit = safeNext(formData.get('next'))
-  const target = explicit !== '/' ? explicit : await defaultLanding(supabase, data.user?.id)
+  const next = safeNext(formData.get('next'))
+  const url = `${APP_URL}/auth/confirm?token_hash=${hashedToken}&type=signup&next=${encodeURIComponent(next)}`
+  const { error: emailError } = await sendEmail({
+    to: email,
+    subject: 'Confirme ton adresse email — PrivaDoc',
+    html: confirmEmailHtml(url),
+  })
+  if (emailError) {
+    return { error: `Compte créé mais l’email de confirmation n’a pas pu être envoyé : ${emailError}` }
+  }
 
-  revalidatePath('/', 'layout')
-  redirect(target)
+  return {
+    message: 'Compte créé ! Vérifie ta boîte mail et clique sur le lien pour confirmer ton adresse.',
+  }
 }
 
 function resetEmailHtml(url: string): string {
