@@ -30,22 +30,28 @@ function parseRole(value: string): RecipientRole {
 }
 
 function inviteEmailHtml(args: {
+  inviterName: string
   inviterEmail: string
   role: RecipientRole
   url: string
   existing: boolean
+  recipientEmail: string
 }): string {
   const cta = args.existing ? 'Se connecter' : 'Créer mon compte'
   const hint = args.existing
     ? 'Connectez-vous avec cette adresse email pour retrouver les documents dans « Partagé avec moi ».'
     : 'Créez un compte avec cette adresse email — les documents apparaîtront automatiquement dans « Partagé avec moi ».'
+  // Show the email in parentheses only when a distinct name is available.
+  const inviterExtra =
+    args.inviterName !== args.inviterEmail ? ` (${escapeHtml(args.inviterEmail)})` : ''
   return `
     <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;margin:0 auto">
       <p style="font-size:18px;font-weight:600;color:#0f172a;margin:0 0 16px">Documents partagés avec vous</p>
       <p style="margin:0 0 8px;color:#334155;font-size:15px;line-height:1.6">
-        <strong>${escapeHtml(args.inviterEmail)}</strong> vous a ajouté comme collaborateur
+        <strong>${escapeHtml(args.inviterName)}</strong>${inviterExtra} vous a ajouté comme collaborateur
         (${escapeHtml(ROLE_LABELS[args.role])}) sur PrivaDoc.
       </p>
+      <p style="margin:0 0 24px;color:#64748b;font-size:13px;line-height:1.6">Destinataire : ${escapeHtml(args.recipientEmail)}</p>
       <p style="margin:0 0 24px;color:#334155;font-size:15px;line-height:1.6">${hint}</p>
       <a href="${args.url}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:8px">${cta}</a>
       <p style="margin:24px 0 0;color:#94a3b8;font-size:12px;word-break:break-all">${escapeHtml(args.url)}</p>
@@ -144,14 +150,26 @@ export async function inviteCollaborator(
   // granted, so a delivery failure is surfaced but not fatal.
   const existing = Boolean(linkedUserId)
   const target = existing ? `${APP_URL}/login` : `${APP_URL}/signup`
+
+  // Prefer the inviter's name (pros set one); fall back to their email.
+  const { data: inviterProfile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', user.id)
+    .maybeSingle()
+  const inviterEmail = user.email ?? 'Un utilisateur'
+  const inviterName = inviterProfile?.display_name?.trim() || inviterEmail
+
   const { error: emailError } = await sendEmail({
     to: email,
-    subject: `${user.email ?? 'Un utilisateur'} vous partage des documents sur PrivaDoc`,
+    subject: `${inviterName} vous partage des documents sur PrivaDoc`,
     html: inviteEmailHtml({
-      inviterEmail: user.email ?? 'Un utilisateur',
+      inviterName,
+      inviterEmail,
       role,
       url: target,
       existing,
+      recipientEmail: email,
     }),
   })
   if (emailError) {
