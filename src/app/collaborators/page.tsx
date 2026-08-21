@@ -1,7 +1,6 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Brand } from '@/app/brand'
+import { AppHeader } from '@/app/app-header'
 import { InviteDialog } from '@/app/collaborators/invite-dialog'
 import { revokeAccess, removeCollaborator } from '@/app/collaborators/actions'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
@@ -63,17 +62,7 @@ export default async function CollaboratorsPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
-        <Brand />
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            Mes documents
-          </Link>
-        </div>
-      </header>
+      <AppHeader />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-3">

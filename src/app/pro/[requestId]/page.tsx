@@ -1,8 +1,7 @@
 import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Brand } from '@/app/brand'
-import { signout } from '@/app/auth/actions'
+import { AppHeader } from '@/app/app-header'
 import { reviewItem } from '@/app/pro/actions'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
@@ -83,28 +82,7 @@ export default async function RequestDetailPage({
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
-        <Brand />
-        <div className="flex items-center gap-4">
-          <Link
-            href="/pro"
-            className="text-sm font-medium text-slate-600 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
-          >
-            Espace pro
-          </Link>
-          <span className="hidden text-sm text-slate-500 sm:inline dark:text-slate-400">
-            {user.email}
-          </span>
-          <form action={signout}>
-            <button
-              type="submit"
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              Se déconnecter
-            </button>
-          </form>
-        </div>
-      </header>
+      <AppHeader />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
         <nav aria-label="Fil d'Ariane" className="flex flex-wrap items-center gap-1 text-sm">

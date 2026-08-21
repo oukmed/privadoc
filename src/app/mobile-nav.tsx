@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
-const LINKS = [
+/** Shared primary navigation — used by both the desktop header and this menu. */
+export const NAV_LINKS = [
+  { href: '/', label: 'Mes documents' },
   { href: '/pro', label: 'Espace pro' },
   { href: '/requests', label: 'Mes demandes' },
   { href: '/collaborators', label: 'Collaborateurs' },
@@ -52,7 +54,7 @@ export function MobileNav() {
             className="fixed inset-0 z-40 cursor-default"
           />
           <nav className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-800 dark:bg-slate-900">
-            {LINKS.map((link) => (
+            {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

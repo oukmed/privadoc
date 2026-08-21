@@ -1,8 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Brand } from '@/app/brand'
-import { signout } from '@/app/auth/actions'
+import { AppHeader } from '@/app/app-header'
 import { getProfile } from '@/app/account/profile'
 import { updateProProfile } from '@/app/account/actions'
 import { RECIPIENT_ROLES, ROLE_LABELS, type RecipientRole } from '@/lib/roles'
@@ -34,28 +33,7 @@ export default async function AccountPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
-        <Brand />
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="text-sm font-medium text-slate-600 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
-          >
-            Mes documents
-          </Link>
-          <span className="hidden text-sm text-slate-500 sm:inline dark:text-slate-400">
-            {user.email}
-          </span>
-          <form action={signout}>
-            <button
-              type="submit"
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              Se déconnecter
-            </button>
-          </form>
-        </div>
-      </header>
+      <AppHeader />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Mon compte</h1>

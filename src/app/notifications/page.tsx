@@ -1,7 +1,6 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Brand } from '@/app/brand'
+import { AppHeader } from '@/app/app-header'
 import { markAllNotificationsRead, markNotificationRead } from '@/app/notifications/actions'
 
 export default async function NotificationsPage() {
@@ -21,15 +20,7 @@ export default async function NotificationsPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
-        <Brand />
-        <Link
-          href="/"
-          className="text-sm font-medium text-slate-600 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
-        >
-          Mes documents
-        </Link>
-      </header>
+      <AppHeader />
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
