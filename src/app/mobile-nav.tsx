@@ -2,15 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-
-/** Shared primary navigation — used by both the desktop header and this menu. */
-export const NAV_LINKS = [
-  { href: '/', label: 'Mes documents' },
-  { href: '/pro', label: 'Espace pro' },
-  { href: '/requests', label: 'Mes demandes' },
-  { href: '/collaborators', label: 'Collaborateurs' },
-  { href: '/account', label: 'Compte' },
-] as const
+import { NAV_LINKS } from '@/app/nav-links'
 
 /** Hamburger menu shown only below the `sm` breakpoint (the desktop nav is hidden there). */
 export function MobileNav() {

@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { Brand } from '@/app/brand'
 import { signout } from '@/app/auth/actions'
 import { NotificationsBell } from '@/app/notifications/notifications-bell'
-import { MobileNav, NAV_LINKS } from '@/app/mobile-nav'
+import { MobileNav } from '@/app/mobile-nav'
+import { NAV_LINKS } from '@/app/nav-links'
 
 /** Shared header for every authenticated (client/pro) page: brand, primary nav,
  * notifications, a mobile hamburger, and sign-out. The admin console uses its own
