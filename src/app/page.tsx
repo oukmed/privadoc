@@ -12,6 +12,7 @@ import { Brand } from '@/app/brand'
 import { ReturnUpload, type ReturnTarget } from '@/app/collaborators/return-upload'
 import { getProfile } from '@/app/account/profile'
 import { NotificationsBell } from '@/app/notifications/notifications-bell'
+import { MobileNav } from '@/app/mobile-nav'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 60 * 5 // 5 minutes
@@ -165,6 +166,7 @@ export default async function Home({
             </Link>
           </nav>
           <NotificationsBell />
+          <MobileNav />
           <form action={signout}>
             <button
               type="submit"
