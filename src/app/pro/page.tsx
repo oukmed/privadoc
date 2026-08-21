@@ -8,19 +8,87 @@ import { RECIPIENT_ROLES, ROLE_LABELS } from '@/lib/roles'
 import { CreateRequestDialog } from '@/app/pro/create-request-dialog'
 import { deleteRequest } from '@/app/pro/actions'
 
+interface RequestItem {
+  id: string
+  label: string
+  status: string
+  due_date: string | null
+}
+
 interface RequestRow {
   id: string
   title: string
   status: string
   client_email: string
   client_name: string | null
-  request_items: { status: string }[]
+  request_items: RequestItem[]
 }
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'En cours',
   completed: 'Terminée',
   archived: 'Archivée',
+}
+
+const SOON_MS = 14 * 24 * 60 * 60 * 1000
+
+interface Deadline {
+  requestId: string
+  title: string
+  client: string
+  label: string
+  due: string
+  overdue: boolean
+}
+
+/** Upcoming (≤14 days) or overdue deadlines for pieces not yet submitted/validated.
+ * Kept out of render (reads the clock). */
+function collectDeadlines(requests: RequestRow[]): Deadline[] {
+  const now = Date.now()
+  const out: Deadline[] = []
+  for (const r of requests) {
+    if (r.status !== 'open') continue
+    const client = r.client_name?.trim() || r.client_email
+    for (const it of r.request_items) {
+      if (!it.due_date || it.status === 'validated' || it.status === 'submitted') continue
+      const t = new Date(it.due_date).getTime()
+      if (t - now <= SOON_MS) {
+        out.push({ requestId: r.id, title: r.title, client, label: it.label, due: it.due_date, overdue: t < now })
+      }
+    }
+  }
+  return out.sort((a, b) => a.due.localeCompare(b.due))
+}
+
+function Kpi({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        {label}
+      </p>
+      <p
+        className={`mt-1 text-2xl font-bold tracking-tight ${
+          accent && value > 0
+            ? 'text-indigo-600 dark:text-indigo-400'
+            : 'text-slate-900 dark:text-slate-50'
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function ProgressBar({ value, total }: { value: number; total: number }) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0
+  return (
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+      <div
+        className={`h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  )
 }
 
 
@@ -125,7 +193,7 @@ export default async function ProPage() {
 
   const { data: requestsData } = await supabase
     .from('document_requests')
-    .select('id, title, status, client_email, client_name, request_items(status)')
+    .select('id, title, status, client_email, client_name, request_items(id, label, status, due_date)')
     .order('created_at', { ascending: false })
   const requests = (requestsData ?? []) as RequestRow[]
 
@@ -149,20 +217,44 @@ export default async function ProPage() {
     }
   }
 
+  // Dashboard metrics + work lists.
+  const openCount = requests.filter((r) => r.status === 'open').length
+  const completedCount = requests.filter((r) => r.status === 'completed').length
+  const toReview = requests.flatMap((r) =>
+    r.request_items
+      .filter((it) => it.status === 'submitted')
+      .map((it) => ({
+        requestId: r.id,
+        title: r.title,
+        client: r.client_name?.trim() || r.client_email,
+        label: it.label,
+      })),
+  )
+  const deadlines = collectDeadlines(requests)
+
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
       <AppHeader />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            Espace pro
-          </h1>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+              Espace pro
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Suivez vos clients et l&apos;avancement de leurs dossiers.
+            </p>
+          </div>
           <CreateRequestDialog />
         </div>
 
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          {clients.length} {clients.length <= 1 ? 'client actif' : 'clients actifs'}
-        </p>
+        {/* KPIs */}
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Kpi label="Clients actifs" value={clients.length} />
+          <Kpi label="Dossiers en cours" value={openCount} />
+          <Kpi label="Pièces à valider" value={toReview.length} accent />
+          <Kpi label="Dossiers terminés" value={completedCount} />
+        </div>
 
         {requests.length === 0 ? (
           <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -171,75 +263,161 @@ export default async function ProPage() {
             </p>
           </div>
         ) : (
-          <div className="mt-8 flex flex-col gap-6">
-            {[...byClient.entries()].map(([clientEmail, clientRequests]) => {
-              const clientName = nameByEmail.get(clientEmail)
-              return (
-              <section
-                key={clientEmail}
-                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
-              >
-                <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-800 dark:bg-slate-800/40">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
-                      {(clientName || clientEmail).charAt(0).toUpperCase()}
-                    </span>
-                    <div className="min-w-0">
-                      <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
-                        {clientName || clientEmail}
-                      </span>
-                      {clientName && (
-                        <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-                          {clientEmail}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                    {clientRequests.length} {clientRequests.length > 1 ? 'demandes' : 'demande'}
-                  </span>
-                </header>
-                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {clientRequests.map((request) => {
-                    const total = request.request_items.length
-                    const validated = request.request_items.filter(
-                      (i) => i.status === 'validated',
-                    ).length
-                    return (
-                      <li
-                        key={request.id}
-                        className="flex items-center justify-between gap-4 px-5 py-4"
+          <>
+            {/* Pieces awaiting the pro's review */}
+            {toReview.length > 0 && (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  À valider ({toReview.length})
+                </h2>
+                <ul className="mt-3 overflow-hidden rounded-xl border border-amber-200 bg-amber-50/60 divide-y divide-amber-100 dark:border-amber-900/60 dark:bg-amber-950/20 dark:divide-amber-900/40">
+                  {toReview.map((t, i) => (
+                    <li key={`${t.requestId}-${i}`} className="flex items-center justify-between gap-4 px-5 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                          {t.label}
+                        </p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                          {t.title} · {t.client}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/pro/${t.requestId}`}
+                        className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
                       >
-                        <Link href={`/pro/${request.id}`} className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400">
-                            {request.title}
-                          </p>
-                          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              {STATUS_LABELS[request.status] ?? request.status}
-                            </span>
-                            <span>
-                              {validated}/{total} validées
-                            </span>
-                          </p>
-                        </Link>
-                        <form action={deleteRequest}>
-                          <input type="hidden" name="id" value={request.id} />
-                          <button
-                            type="submit"
-                            className="shrink-0 text-sm font-medium text-red-600 transition hover:text-red-500 dark:text-red-400"
-                          >
-                            Supprimer
-                          </button>
-                        </form>
-                      </li>
-                    )
-                  })}
+                        Examiner
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               </section>
-              )
-            })}
-          </div>
+            )}
+
+            {/* Upcoming / overdue deadlines */}
+            {deadlines.length > 0 && (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Échéances à venir
+                </h2>
+                <ul className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white divide-y divide-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:divide-slate-800">
+                  {deadlines.map((d, i) => (
+                    <li key={`${d.requestId}-${i}`} className="flex items-center justify-between gap-4 px-5 py-3">
+                      <Link href={`/pro/${d.requestId}`} className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400">
+                          {d.label}
+                        </p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                          {d.title} · {d.client}
+                        </p>
+                      </Link>
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          d.overdue
+                            ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300'
+                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        {d.overdue ? 'En retard · ' : ''}
+                        {new Date(d.due).toLocaleDateString('fr-FR')}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {/* Clients + progress */}
+            <section className="mt-8">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Clients ({byClient.size})
+              </h2>
+              <div className="mt-3 flex flex-col gap-6">
+                {[...byClient.entries()].map(([clientEmail, clientRequests]) => {
+                  const clientName = nameByEmail.get(clientEmail)
+                  return (
+                    <section
+                      key={clientEmail}
+                      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                    >
+                      <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-800 dark:bg-slate-800/40">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                            {(clientName || clientEmail).charAt(0).toUpperCase()}
+                          </span>
+                          <div className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                              {clientName || clientEmail}
+                            </span>
+                            {clientName && (
+                              <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                                {clientEmail}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                          {clientRequests.length} {clientRequests.length > 1 ? 'demandes' : 'demande'}
+                        </span>
+                      </header>
+                      <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {clientRequests.map((request) => {
+                          const total = request.request_items.length
+                          const validated = request.request_items.filter(
+                            (i) => i.status === 'validated',
+                          ).length
+                          const submitted = request.request_items.filter(
+                            (i) => i.status === 'submitted',
+                          ).length
+                          return (
+                            <li key={request.id} className="px-5 py-4">
+                              <div className="flex items-center justify-between gap-4">
+                                <Link href={`/pro/${request.id}`} className="min-w-0 flex-1">
+                                  <p className="truncate font-medium text-slate-900 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400">
+                                    {request.title}
+                                  </p>
+                                  <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                    <span
+                                      className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${
+                                        request.status === 'completed'
+                                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                                      }`}
+                                    >
+                                      {STATUS_LABELS[request.status] ?? request.status}
+                                    </span>
+                                    {submitted > 0 && (
+                                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+                                        {submitted} à valider
+                                      </span>
+                                    )}
+                                    <span>
+                                      {validated}/{total} validées
+                                    </span>
+                                  </p>
+                                </Link>
+                                <form action={deleteRequest}>
+                                  <input type="hidden" name="id" value={request.id} />
+                                  <button
+                                    type="submit"
+                                    className="shrink-0 text-sm font-medium text-red-600 transition hover:text-red-500 dark:text-red-400"
+                                  >
+                                    Supprimer
+                                  </button>
+                                </form>
+                              </div>
+                              <div className="mt-2.5">
+                                <ProgressBar value={validated} total={total} />
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </section>
+                  )
+                })}
+              </div>
+            </section>
+          </>
         )}
       </main>
     </div>
