@@ -63,15 +63,7 @@ export default async function Home({
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // The super-admin has a dedicated platform console — never the client documents UI.
-  const { isAdmin, displayName } = await getProfile()
-  if (isAdmin) redirect('/admin')
-
-  const { data: allFolders, error: foldersError } = await supabase
-    .from('folders')
-    .select('id, name, parent_id')
-    .order('name', { ascending: true })
-
+  // Build the documents query (depends on user + params) before batching.
   let documentsQuery = supabase
     .from('documents')
     .select('id, title, storage_path, size_bytes, created_at, uploaded_by')
@@ -80,20 +72,43 @@ export default async function Home({
     ? documentsQuery.eq('folder_id', currentFolderId)
     : documentsQuery.is('folder_id', null)
   if (query) documentsQuery = documentsQuery.ilike('title', `%${query}%`)
-  const { data: documents, error: documentsError } = await documentsQuery.order(SORTS[sortKey].column, {
-    ascending: SORTS[sortKey].ascending,
-  })
+
+  // All independent reads in parallel — avoids ~7 sequential DB round trips.
+  const [profile, foldersRes, documentsRes, sharedRes, sharesRes, myLinksRes, writeGrantsRes] =
+    await Promise.all([
+      getProfile(),
+      supabase.from('folders').select('id, name, parent_id').order('name', { ascending: true }),
+      documentsQuery.order(SORTS[sortKey].column, { ascending: SORTS[sortKey].ascending }),
+      supabase
+        .from('documents')
+        .select('id, title, storage_path, size_bytes, created_at')
+        .neq('owner_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('shares')
+        .select('id, recipient_email, recipient_role, expires_at')
+        .order('created_at', { ascending: false }),
+      supabase.from('collaborators').select('id, owner_id').eq('user_id', user.id),
+      supabase
+        .from('collaborator_access')
+        .select('collaborator_id, folder_id')
+        .eq('permission', 'write'),
+    ])
+
+  // The super-admin has a dedicated platform console — never the client documents UI.
+  if (profile.isAdmin) redirect('/admin')
+  const { displayName } = profile
+
+  const { data: allFolders, error: foldersError } = foldersRes
+  const { data: documents, error: documentsError } = documentsRes
+  const { data: sharedDocs } = sharedRes
+  const { data: shares } = sharesRes
+  const { data: myLinks } = myLinksRes
+  const { data: writeGrants } = writeGrantsRes
 
   const folders: Folder[] = allFolders ?? []
   const subfolders = folders.filter((f) => (f.parent_id ?? null) === currentFolderId)
   const breadcrumbs = buildBreadcrumbs(folders, currentFolderId)
-
-  // Documents shared WITH the current user (returned by the additive RLS grant policy).
-  const { data: sharedDocs } = await supabase
-    .from('documents')
-    .select('id, title, storage_path, size_bytes, created_at')
-    .neq('owner_id', user.id)
-    .order('created_at', { ascending: false })
 
   // Batch-create short-lived signed URLs for the download links (owned + shared).
   const paths = [...(documents ?? []), ...(sharedDocs ?? [])].map((d) => d.storage_path)
@@ -105,22 +120,6 @@ export default async function Home({
     }
   }
 
-  // Active shares (RLS-scoped to the creator) for the revoke panel.
-  const { data: shares } = await supabase
-    .from('shares')
-    .select('id, recipient_email, recipient_role, expires_at')
-    .order('created_at', { ascending: false })
-
-  // Owners this user collaborates with + folders they may deposit into, for the
-  // "send a document back" control.
-  const { data: myLinks } = await supabase
-    .from('collaborators')
-    .select('id, owner_id')
-    .eq('user_id', user.id)
-  const { data: writeGrants } = await supabase
-    .from('collaborator_access')
-    .select('collaborator_id, folder_id')
-    .eq('permission', 'write')
   const folderName = new Map(folders.map((f) => [f.id, f.name]))
   const returnTargets: ReturnTarget[] = (myLinks ?? []).map((link) => ({
     ownerId: link.owner_id,
