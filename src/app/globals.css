@@ -47,18 +47,34 @@
     outline-offset: 2px;
   }
 
-  /* Tailwind v4 no longer sets cursor:pointer on buttons — restore it so
-     interactive controls show the hand cursor. */
+  /* Tailwind v4 no longer sets cursor:pointer on buttons — restore the hand
+     cursor on every clickable control. */
+  a[href],
   button:not(:disabled),
   [role='button']:not([aria-disabled='true']),
+  [role='link'],
+  [role='tab'],
+  [role='menuitem'],
+  [role='option'],
+  summary,
+  select:not(:disabled),
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  input[type='file']:not(:disabled),
+  input[type='submit']:not(:disabled),
+  input[type='button']:not(:disabled),
+  input[type='reset']:not(:disabled),
+  input[type='range']:not(:disabled),
+  input[type='color']:not(:disabled),
   label:has(> input[type='checkbox']),
   label:has(> input[type='radio']),
-  summary,
-  select:not(:disabled) {
+  label:has(> input[type='file']) {
     cursor: pointer;
   }
 
   button:disabled,
+  input:disabled,
+  select:disabled,
   [aria-disabled='true'] {
     cursor: not-allowed;
   }
