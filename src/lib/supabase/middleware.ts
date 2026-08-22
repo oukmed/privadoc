@@ -2,7 +2,20 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/lib/types/database'
 
-const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password', '/auth', '/share', '/api/share']
+const PUBLIC_PATHS = [
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/auth',
+  '/share',
+  '/api/share',
+  // PWA assets must load without auth (install + service worker).
+  '/manifest.webmanifest',
+  '/sw.js',
+  '/icon-192',
+  '/icon-512',
+  '/apple-icon',
+]
 
 /**
  * Refreshes the Supabase session on every request and guards private routes.
