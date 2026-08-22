@@ -72,9 +72,9 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
             role="dialog"
             aria-modal="true"
             aria-labelledby="invite-dialog-title"
-            className="flex max-h-[90vh] w-full max-w-md flex-col rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+            className="flex max-h-[90vh] w-full max-w-md flex-col rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900"
           >
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between border-b border-slate-200 p-6 dark:border-slate-800">
               <h2
                 id="invite-dialog-title"
                 className="text-lg font-semibold text-slate-900 dark:text-slate-50"
@@ -100,7 +100,8 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
             </div>
 
             {hasTargets ? (
-              <form action={action} className="mt-5 flex min-h-0 flex-col gap-4">
+              <form action={action} className="flex min-h-0 flex-1 flex-col">
+                <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
                 {needsName && (
                   <div>
                     <label htmlFor="invite-your-name" className={labelClass}>
@@ -247,7 +248,14 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                     dossiers partagés
                   </span>
                 </label>
+              </div>
 
+              <div className="border-t border-slate-200 p-6 dark:border-slate-800">
+                {state?.error && (
+                  <p role="alert" className="mb-3 text-sm text-red-600 dark:text-red-400">
+                    {state.error}
+                  </p>
+                )}
                 <button
                   type="submit"
                   disabled={pending}
@@ -277,14 +285,10 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                   )}
                   {pending ? 'Envoi en cours…' : "Envoyer l'invitation"}
                 </button>
-                {state?.error && (
-                  <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-                    {state.error}
-                  </p>
-                )}
-              </form>
+              </div>
+            </form>
             ) : (
-              <p className="mt-5 text-sm text-slate-500 dark:text-slate-400">
+              <p className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400">
                 Ajoute d&apos;abord un document ou un dossier avant d&apos;inviter un collaborateur.
               </p>
             )}
