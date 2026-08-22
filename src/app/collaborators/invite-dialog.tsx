@@ -167,8 +167,8 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                   </div>
                 </div>
 
-                <fieldset className="min-h-0">
-                  <legend className={labelClass}>Documents et dossiers partagés</legend>
+                <div>
+                  <p className={labelClass}>Documents et dossiers partagés</p>
                   <div className="mt-1.5 max-h-52 overflow-y-auto rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                     {folders.length > 0 && (
                       <div className="flex flex-col gap-2">
@@ -235,7 +235,7 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                       </div>
                     )}
                   </div>
-                </fieldset>
+                </div>
 
                 <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
                   <input
