@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SwRegister } from "@/app/sw-register";
+import { InstallBanner } from "@/app/install-banner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body suppressHydrationWarning className="min-h-full flex flex-col">
         <SwRegister />
         {children}
+        <InstallBanner />
       </body>
     </html>
   );
