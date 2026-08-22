@@ -40,8 +40,11 @@ export function InstallBanner() {
     const isIOS = /iphone|ipad|ipod/i.test(ua)
     const isSafari = /safari/i.test(ua) && !/crios|fxios|edgios/i.test(ua)
     if (isIOS && isSafari) {
-      setIosHint(true)
-      setShow(true)
+      // Defer out of the effect body (lint: no synchronous setState in effect).
+      queueMicrotask(() => {
+        setIosHint(true)
+        setShow(true)
+      })
     }
 
     return () => window.removeEventListener('beforeinstallprompt', onPrompt as EventListener)
