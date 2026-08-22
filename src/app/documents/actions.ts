@@ -262,3 +262,24 @@ export async function renameDocument(formData: FormData): Promise<void> {
 
   revalidatePath('/')
 }
+
+/** Move a document into a folder (empty `folderId` = root). */
+export async function moveDocument(formData: FormData): Promise<void> {
+  const id = String(formData.get('id') ?? '').trim()
+  if (!id) return
+  const requestedFolderId = String(formData.get('folderId') ?? '').trim()
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return
+
+  // Keep the target folder only if the caller owns it; otherwise move to root.
+  const folderId = await ownedFolderIdOrNull(supabase, requestedFolderId, user.id)
+
+  // RLS also restricts the update to the caller's own document.
+  await supabase.from('documents').update({ folder_id: folderId }).eq('id', id).eq('owner_id', user.id)
+
+  revalidatePath('/')
+}

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ConfirmDialog } from '@/app/documents/confirm-dialog'
 import { RenameDialog } from '@/app/documents/rename-dialog'
 import { ShareDialog } from '@/app/documents/share-dialog'
+import { MoveDialog } from '@/app/documents/move-dialog'
 import { deleteDocument, deleteSelection, renameDocument } from '@/app/documents/actions'
 import { deleteFolder, renameFolder } from '@/app/folders/actions'
 
@@ -30,6 +31,10 @@ interface DocumentListProps {
   sharedDocuments?: DocumentItem[]
   /** Whether the current user already has a saved name (drives the share dialog prompt). */
   senderHasName?: boolean
+  /** Every folder the user owns — destinations for the "Move" action. */
+  allFolders?: FolderItem[]
+  /** The folder currently being viewed ('' = root) — preselected in the move dialog. */
+  currentFolderId?: string
 }
 
 const ZIP_ENDPOINT = '/api/documents/zip'
@@ -92,6 +97,8 @@ export function DocumentList({
   documents,
   sharedDocuments,
   senderHasName,
+  allFolders,
+  currentFolderId,
 }: DocumentListProps) {
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set())
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set())
@@ -310,6 +317,13 @@ export function DocumentList({
                 >
                   Partager
                 </button>
+                {(allFolders?.length ?? 0) > 0 && (
+                  <MoveDialog
+                    documentId={doc.id}
+                    currentFolderId={currentFolderId ?? ''}
+                    folders={allFolders ?? []}
+                  />
+                )}
                 <RenameDialog action={renameDocument} id={doc.id} currentName={doc.title} noun="document" />
                 <ConfirmDialog
                   triggerLabel="Supprimer"

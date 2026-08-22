@@ -188,6 +188,8 @@ export default async function Home({
         ) : (
           <DocumentList
             senderHasName={Boolean(displayName)}
+            allFolders={folders.map((folder) => ({ id: folder.id, name: folder.name }))}
+            currentFolderId={currentFolderId ?? ''}
             folders={subfolders.map((folder) => ({ id: folder.id, name: folder.name }))}
             documents={(documents ?? []).map((doc) => ({
               id: doc.id,
