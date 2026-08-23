@@ -9,11 +9,16 @@ export const metadata = {
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[] }>
+  searchParams: Promise<{ next?: string | string[]; email?: string | string[] }>
 }) {
-  const nextParam = (await searchParams).next
-  const next = typeof nextParam === 'string' ? nextParam : undefined
-  const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : '/login'
+  const sp = await searchParams
+  const next = typeof sp.next === 'string' ? sp.next : undefined
+  const email = typeof sp.email === 'string' ? sp.email : undefined
+  const params = new URLSearchParams()
+  if (next) params.set('next', next)
+  if (email) params.set('email', email)
+  const query = params.toString()
+  const loginHref = query ? `/login?${query}` : '/login'
   return (
     <AuthForm
       title="Créer ton compte"
@@ -22,6 +27,7 @@ export default async function SignupPage({
       action={signup}
       passwordAutoComplete="new-password"
       next={next}
+      defaultEmail={email}
       footer={
         <>
           Déjà un compte ?{' '}

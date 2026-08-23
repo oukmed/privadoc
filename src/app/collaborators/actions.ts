@@ -149,7 +149,10 @@ export async function inviteCollaborator(
   // Notify the collaborator via our own (Gmail) mailer — the access is already
   // granted, so a delivery failure is surfaced but not fatal.
   const existing = Boolean(linkedUserId)
-  const target = existing ? `${APP_URL}/login` : `${APP_URL}/signup`
+  // Prefill the invitee's email on the auth page; the login/signup pages also carry
+  // it across their cross-link, so a wrong existing-guess is a one-click switch.
+  const emailQuery = `?email=${encodeURIComponent(email)}`
+  const target = existing ? `${APP_URL}/login${emailQuery}` : `${APP_URL}/signup${emailQuery}`
 
   // Prefer the inviter's saved name; otherwise accept one typed in the dialog and
   // persist it so it shows on future shares too. Fall back to their email.

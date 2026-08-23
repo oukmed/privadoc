@@ -20,6 +20,8 @@ interface AuthFormProps {
   forgotHref?: string
   /** When true, shows a required "Nom" field (name="displayName") — used on signup. */
   showName?: boolean
+  /** Prefills the email field (e.g. from a collaborator invite link). */
+  defaultEmail?: string
 }
 
 export function AuthForm({
@@ -32,6 +34,7 @@ export function AuthForm({
   next,
   forgotHref,
   showName,
+  defaultEmail,
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(action, undefined)
   const [showPassword, setShowPassword] = useState(false)
@@ -82,6 +85,7 @@ export function AuthForm({
                 type="email"
                 autoComplete="email"
                 required
+                defaultValue={defaultEmail}
                 placeholder="you@example.com"
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
               />
