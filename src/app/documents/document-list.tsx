@@ -253,7 +253,7 @@ export function DocumentList({
                   <span className="truncate">{folder.name}</span>
                 </Link>
               </div>
-              <div className="flex shrink-0 items-center gap-4 self-end sm:self-auto">
+              <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 self-stretch sm:shrink-0 sm:gap-4 sm:self-auto">
                 <RenameDialog action={renameFolder} id={folder.id} currentName={folder.name} noun="dossier" />
                 <ConfirmDialog
                   triggerLabel="Supprimer"
@@ -309,7 +309,7 @@ export function DocumentList({
                   </p>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-4 self-end sm:self-auto">
+              <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 self-stretch sm:shrink-0 sm:gap-4 sm:self-auto">
                 <button
                   type="button"
                   onClick={() => setShareTargets([doc.id])}
