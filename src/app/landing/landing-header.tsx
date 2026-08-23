@@ -11,16 +11,21 @@ export function LandingHeader() {
         <Brand />
       </Link>
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Mobile: compact text link to keep the row from overflowing */}
+        {/* Mobile: compact text link (visibility toggled on the element itself,
+            which has no competing display utility). */}
         <Link
           href="/login"
           className="whitespace-nowrap px-1 text-sm font-semibold text-slate-600 transition hover:text-indigo-600 sm:hidden dark:text-slate-300 dark:hover:text-indigo-400"
         >
           Se connecter
         </Link>
-        <Link href="/login" className={`${BTN_SECONDARY} hidden sm:inline-flex`}>
-          Se connecter
-        </Link>
+        {/* Desktop: full button. The show/hide lives on the wrapper so it never
+            fights BTN_SECONDARY's own `inline-flex`. */}
+        <div className="hidden sm:block">
+          <Link href="/login" className={BTN_SECONDARY}>
+            Se connecter
+          </Link>
+        </div>
         <Link href="/signup" className={`${BTN_PRIMARY} px-3 sm:px-5`}>
           Créer un compte
         </Link>
