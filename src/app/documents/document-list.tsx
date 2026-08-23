@@ -336,7 +336,7 @@ export function DocumentList({
 
       {selectedCount > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-3">
-          <div className="flex w-full max-w-lg items-center gap-2 rounded-full border border-slate-200 bg-white/95 py-1.5 pl-2 pr-2 shadow-xl shadow-slate-900/10 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+          <div className="flex w-full max-w-lg flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-xl shadow-slate-900/10 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
             <button
               type="button"
               onClick={clearSelection}
@@ -362,7 +362,7 @@ export function DocumentList({
                 <svg viewBox="0 0 24 24" fill="none" className="size-4" aria-hidden="true">
                   <path d="M8 7l4-4 4 4M12 3v12M6 12v7h12v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span className="hidden sm:inline">Partager</span>
+                <span>Partager</span>
               </button>
               <button
                 type="button"
@@ -381,7 +381,7 @@ export function DocumentList({
                     <path d="M8 11l4 4 4-4M12 15V3M6 21h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
-                <span className="hidden sm:inline">ZIP</span>
+                <span>Télécharger</span>
               </button>
               <button
                 type="button"
@@ -392,7 +392,7 @@ export function DocumentList({
                 <svg viewBox="0 0 24 24" fill="none" className="size-4" aria-hidden="true">
                   <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span className="hidden sm:inline">Supprimer</span>
+                <span>Supprimer</span>
               </button>
             </div>
           </div>
