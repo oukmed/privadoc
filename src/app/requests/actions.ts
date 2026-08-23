@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { notify } from '@/lib/notify'
+import { quotaError } from '@/lib/storage-quota'
 
 interface SubmitPieceInput {
   itemId: string
@@ -27,6 +28,14 @@ export async function submitPiece(input: SubmitPieceInput): Promise<{ error?: st
 
   // The object must live under the caller's own storage prefix.
   if (!input.storagePath.startsWith(`${user.id}/`)) return { error: 'Chemin invalide.' }
+
+  const overQuota = await quotaError(supabase, input.sizeBytes)
+  if (overQuota) {
+    await supabase.storage
+      .from(process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents')
+      .remove([input.storagePath])
+    return { error: overQuota }
+  }
 
   // Fetch the item joined to its request; !inner + client_id filter ensures the
   // request is addressed to this client (RLS enforces it too).

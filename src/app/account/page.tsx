@@ -5,6 +5,7 @@ import { AppHeader } from '@/app/app-header'
 import { getProfile } from '@/app/account/profile'
 import { updateProProfile } from '@/app/account/actions'
 import { RECIPIENT_ROLES, ROLE_LABELS, type RecipientRole } from '@/lib/roles'
+import { storageStatus, formatBytes } from '@/lib/storage-quota'
 
 export default async function AccountPage() {
   const supabase = await createClient()
@@ -14,6 +15,9 @@ export default async function AccountPage() {
   if (!user) redirect('/login')
 
   const profile = await getProfile()
+
+  const { used, quota } = await storageStatus(supabase)
+  const usedPct = Math.min(100, Math.round((used / quota) * 100))
 
   // Split a saved profession into "known role" (select) vs free text (custom input).
   const isKnownProfession =
@@ -75,6 +79,26 @@ export default async function AccountPage() {
               Vous recevrez un email dès qu&apos;elle sera approuvée.
             </p>
           )}
+
+          <div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Stockage</h3>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                {formatBytes(used)} sur {formatBytes(quota)}
+              </span>
+            </div>
+            <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+              <div
+                className={`h-full rounded-full ${usedPct >= 90 ? 'bg-red-500' : 'bg-indigo-600'}`}
+                style={{ width: `${usedPct}%` }}
+              />
+            </div>
+            {!profile.isProfessional && (
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                Besoin de plus d&apos;espace ? Passez à un compte professionnel.
+              </p>
+            )}
+          </div>
 
           <div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">Votre nom</h3>

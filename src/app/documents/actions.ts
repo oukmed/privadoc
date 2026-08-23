@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { quotaError } from '@/lib/storage-quota'
 
 export type UploadState =
   | {
@@ -67,6 +68,9 @@ export async function uploadDocument(_prevState: UploadState, formData: FormData
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Session expirée, reconnecte-toi.' }
 
+  const overQuota = await quotaError(supabase, file.size)
+  if (overQuota) return { error: overQuota }
+
   const contentType = safeContentType(file.type)
   const path = `${user.id}/${crypto.randomUUID()}${fileExtension(file.name)}`
 
@@ -117,6 +121,12 @@ export async function registerDocument(input: {
 
   // The object must live under the caller's own folder prefix.
   if (!input.storagePath.startsWith(`${user.id}/`)) return { error: 'Chemin invalide.' }
+
+  const overQuota = await quotaError(supabase, input.sizeBytes)
+  if (overQuota) {
+    await supabase.storage.from(BUCKET).remove([input.storagePath])
+    return { error: overQuota }
+  }
 
   const folderId = await ownedFolderIdOrNull(supabase, input.folderId, user.id)
 
@@ -177,6 +187,13 @@ export async function registerDocuments(
       folder_id: folderId,
     }))
   if (rows.length === 0) return { error: 'Chemin invalide.', added: 0 }
+
+  const incoming = rows.reduce((sum, r) => sum + (r.size_bytes ?? 0), 0)
+  const overQuota = await quotaError(supabase, incoming)
+  if (overQuota) {
+    await supabase.storage.from(BUCKET).remove(rows.map((r) => r.storage_path))
+    return { error: overQuota, added: 0 }
+  }
 
   const { error } = await supabase.from('documents').insert(rows)
   if (error) {
