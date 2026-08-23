@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@/app/documents/confirm-dialog'
 import { RenameDialog } from '@/app/documents/rename-dialog'
 import { ShareDialog } from '@/app/documents/share-dialog'
 import { MoveDialog } from '@/app/documents/move-dialog'
-import { deleteDocument, deleteSelection, renameDocument } from '@/app/documents/actions'
+import { deleteSelection, renameDocument } from '@/app/documents/actions'
 import { deleteFolder, renameFolder } from '@/app/folders/actions'
 
 interface FolderItem {
@@ -325,15 +325,6 @@ export function DocumentList({
                   />
                 )}
                 <RenameDialog action={renameDocument} id={doc.id} currentName={doc.title} noun="document" />
-                <ConfirmDialog
-                  triggerLabel="Supprimer"
-                  title="Supprimer le document"
-                  description="Cette action est définitive. Le fichier sera retiré de ton espace de stockage."
-                  confirmLabel="Supprimer"
-                  action={deleteDocument}
-                  hiddenFields={{ id: doc.id }}
-                  destructive
-                />
               </div>
             </li>
           ))}
