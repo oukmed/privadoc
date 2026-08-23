@@ -332,56 +332,67 @@ export function DocumentList({
       </div>
 
       {/* Spacer so the fixed selection bar never hides the last rows. */}
-      {selectedCount > 0 && <div aria-hidden className="h-56 sm:h-24" />}
+      {selectedCount > 0 && <div aria-hidden className="h-20" />}
 
       {selectedCount > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6">
-          <div className="flex w-full max-w-2xl flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-900">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={clearSelection}
-                aria-label="Annuler la sélection"
-                className="rounded-md p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <svg viewBox="0 0 24 24" fill="none" className="size-5" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                {selectedCount} élément(s) sélectionné(s)
-              </span>
-            </div>
+        <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-3">
+          <div className="flex w-full max-w-lg items-center gap-2 rounded-full border border-slate-200 bg-white/95 py-1.5 pl-2 pr-2 shadow-xl shadow-slate-900/10 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+            <button
+              type="button"
+              onClick={clearSelection}
+              aria-label="Annuler la sélection"
+              className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="size-5" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              {selectedCount}
+              <span className="hidden sm:inline"> sélectionné(s)</span>
+            </span>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="ml-auto flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setShareTargets([...selectedDocs])}
                 disabled={selectedDocs.size === 0}
-                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Partager la sélection
+                <svg viewBox="0 0 24 24" fill="none" className="size-4" aria-hidden="true">
+                  <path d="M8 7l4-4 4 4M12 3v12M6 12v7h12v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="hidden sm:inline">Partager</span>
               </button>
               <button
                 type="button"
                 onClick={downloadZip}
                 disabled={(selectedDocs.size === 0 && selectedFolders.size === 0) || zipping}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                aria-label="Télécharger en ZIP"
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                {zipping && (
+                {zipping ? (
                   <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
                   </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" className="size-4" aria-hidden="true">
+                    <path d="M8 11l4 4 4-4M12 15V3M6 21h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 )}
-                {zipping ? 'Préparation du ZIP…' : 'Télécharger en ZIP'}
+                <span className="hidden sm:inline">ZIP</span>
               </button>
               <button
                 type="button"
                 onClick={() => setBulkConfirm(true)}
-                className="rounded-lg px-3 py-1.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                aria-label="Supprimer la sélection"
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
               >
-                Supprimer la sélection
+                <svg viewBox="0 0 24 24" fill="none" className="size-4" aria-hidden="true">
+                  <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="hidden sm:inline">Supprimer</span>
               </button>
             </div>
           </div>
