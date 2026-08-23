@@ -1,9 +1,10 @@
 import { LandingHeader } from '@/app/landing/landing-header'
 import { Hero } from '@/app/landing/hero'
-import { Thesis } from '@/app/landing/thesis'
-import { Why } from '@/app/landing/why'
-import { Comparison } from '@/app/landing/comparison'
+import { Pain } from '@/app/landing/pain'
+import { HowItWorks } from '@/app/landing/how-it-works'
+import { Benefits } from '@/app/landing/benefits'
 import { Trust } from '@/app/landing/trust'
+import { Comparison } from '@/app/landing/comparison'
 import { FinalCta } from '@/app/landing/final-cta'
 import { LandingFooter } from '@/app/landing/landing-footer'
 
@@ -11,13 +12,20 @@ import { LandingFooter } from '@/app/landing/landing-footer'
 export function LandingPage() {
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
+      <a
+        href="#contenu"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-indigo-700 focus:shadow dark:focus:bg-slate-900 dark:focus:text-indigo-300"
+      >
+        Aller au contenu
+      </a>
       <LandingHeader />
-      <main>
+      <main id="contenu" tabIndex={-1}>
         <Hero />
-        <Thesis />
-        <Why />
-        <Comparison />
+        <Pain />
+        <HowItWorks />
+        <Benefits />
         <Trust />
+        <Comparison />
         <FinalCta />
       </main>
       <LandingFooter />

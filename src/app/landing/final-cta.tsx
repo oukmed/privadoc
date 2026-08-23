@@ -1,28 +1,27 @@
 import Link from 'next/link'
-import { ArrowIcon, BTN_PRIMARY, BTN_SECONDARY, CONTAINER, Eyebrow } from '@/app/landing/ui'
+import { ArrowIcon, BTN_PRIMARY_INVERT, BTN_SECONDARY_ON_DARK, CONTAINER } from '@/app/landing/ui'
 
-/** Closing call to action. */
+/** Closing call to action: the one deliberately centered full-stop, on a dark slate band. */
 export function FinalCta() {
   return (
-    <section id="essayer" aria-labelledby="essayer-heading" className={`${CONTAINER} py-20 sm:py-28`}>
-      <div className="mx-auto max-w-2xl text-center">
-        <Eyebrow centered>Prêt à essayer</Eyebrow>
+    <section id="essayer" aria-labelledby="essayer-heading" className={`${CONTAINER} py-24`}>
+      <div className="rounded-3xl bg-slate-900 px-8 py-16 text-center dark:ring-1 dark:ring-slate-800">
         <h2
           id="essayer-heading"
-          className="mt-4 text-3xl font-bold tracking-tight text-balance text-slate-900 sm:text-4xl dark:text-white"
+          className="mx-auto max-w-2xl font-serif text-3xl font-semibold tracking-tight text-balance text-white sm:text-5xl"
         >
-          Le prochain dossier se remplit tout seul.
+          Votre prochain dossier peut commencer maintenant.
         </h2>
-        <p className="mx-auto mt-4 max-w-md text-lg text-slate-600 dark:text-slate-300">
+        <p className="mx-auto mt-5 max-w-md text-slate-300">
           Créez votre première demande de pièces en quelques minutes. Gratuit pour démarrer, sans
           carte bancaire.
         </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Link href="/signup" className={BTN_PRIMARY}>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Link href="/signup" className={BTN_PRIMARY_INVERT}>
             Créer un compte gratuit
             <ArrowIcon />
           </Link>
-          <Link href="/login" className={BTN_SECONDARY}>
+          <Link href="/login" className={BTN_SECONDARY_ON_DARK}>
             Se connecter
           </Link>
         </div>

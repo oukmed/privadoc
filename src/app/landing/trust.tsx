@@ -1,42 +1,45 @@
 import type { ReactNode } from 'react'
-import { CONTAINER } from '@/app/landing/ui'
+import { CONTAINER, SectionHead } from '@/app/landing/ui'
 
-type Stat = { key: ReactNode; value: string }
+type Cell = { label: ReactNode; body: string }
 
-const STATS: Stat[] = [
+const CELLS: Cell[] = [
   {
-    key: (
+    label: (
       <>
         <span role="img" aria-label="Union européenne">
           🇪🇺
         </span>{' '}
-        Europe
+        Hébergé en Europe
       </>
     ),
-    value: 'Données hébergées en Europe, conformes au RGPD — pas de transfert hors UE.',
+    body: 'Vos données restent dans l’Union européenne, conformément au RGPD. Aucun transfert hors UE.',
   },
   {
-    key: '0 pub',
-    value: "Vos documents ne sont jamais analysés à des fins publicitaires ou d'entraînement d'IA.",
+    label: 'Chiffré et sous contrôle',
+    body: 'Liens de partage qui expirent, accès révocables à tout moment. Vous décidez qui voit quoi, et jusqu’à quand.',
   },
   {
-    key: '1 lien',
-    value: "C'est tout ce que votre client reçoit. Aucun logiciel, aucun compte compliqué.",
+    label: 'Jamais exploité',
+    body: 'Vos documents ne servent ni à la publicité, ni à entraîner une IA. Zéro pub.',
   },
 ]
 
-/** Compact 3-up trust signals. */
+/** Trust: reassurance for sensitive documents, split by vertical hairlines rather than cards. */
 export function Trust() {
   return (
-    <section aria-label="Confiance" className={`${CONTAINER} py-20 sm:py-28`}>
-      <div className="grid gap-5 sm:grid-cols-3">
-        {STATS.map((stat, index) => (
-          <div
-            key={index}
-            className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
-          >
-            <p className="text-2xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400">{stat.key}</p>
-            <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">{stat.value}</p>
+    <section aria-labelledby="trust-heading" className={`${CONTAINER} py-20 sm:py-28`}>
+      <SectionHead
+        index="04"
+        eyebrow="Confidentialité"
+        title="Des documents sensibles méritent mieux qu'un dossier partagé."
+        headingId="trust-heading"
+      />
+      <div className="mt-12 grid divide-y divide-slate-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-slate-800">
+        {CELLS.map((cell, index) => (
+          <div key={index} className="py-6 sm:px-6 sm:first:pl-0 sm:last:pr-0">
+            <h3 className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{cell.label}</h3>
+            <p className="mt-2 text-slate-600 dark:text-slate-300">{cell.body}</p>
           </div>
         ))}
       </div>
