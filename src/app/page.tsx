@@ -12,7 +12,7 @@ import { getProfile } from '@/app/account/profile'
 import { AppHeader } from '@/app/app-header'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
-const SIGNED_URL_TTL = 60 * 5 // 5 minutes
+const SIGNED_URL_TTL = 60 * 60 // 1 hour (open links; downloads mint a fresh URL on click)
 
 type SortKey = 'recent' | 'old' | 'az' | 'za'
 const SORTS: Record<SortKey, { column: 'created_at' | 'title'; ascending: boolean }> = {

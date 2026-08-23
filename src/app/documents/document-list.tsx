@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@/app/documents/confirm-dialog'
 import { RenameDialog } from '@/app/documents/rename-dialog'
 import { ShareDialog } from '@/app/documents/share-dialog'
 import { MoveDialog } from '@/app/documents/move-dialog'
-import { deleteSelection, renameDocument } from '@/app/documents/actions'
+import { deleteSelection, renameDocument, getDownloadUrl } from '@/app/documents/actions'
 import { deleteFolder, renameFolder } from '@/app/folders/actions'
 
 interface FolderItem {
@@ -159,21 +159,23 @@ export function DocumentList({
   }
 
   // A single file downloads on its own; a multi-selection (or any folder) is zipped.
-  function downloadSelection(): void {
+  async function downloadSelection(): Promise<void> {
     if (selectedDocs.size === 1 && selectedFolders.size === 0) {
       const id = [...selectedDocs][0]
-      const doc = documents.find((d) => d.id === id)
-      if (doc?.signedUrl) {
+      // Fetch a FRESH signed URL (page-load URLs expire → InvalidJWT).
+      const { url, error } = await getDownloadUrl(id)
+      if (url) {
         const anchor = document.createElement('a')
-        anchor.href = doc.signedUrl
+        anchor.href = url
         anchor.target = '_blank'
         anchor.rel = 'noopener noreferrer'
-        anchor.download = doc.title
         document.body.appendChild(anchor)
         anchor.click()
         anchor.remove()
         return
       }
+      setZipError(error ?? 'Téléchargement indisponible.')
+      return
     }
     void downloadZip()
   }
@@ -384,7 +386,7 @@ export function DocumentList({
               </button>
               <button
                 type="button"
-                onClick={downloadSelection}
+                onClick={() => void downloadSelection()}
                 disabled={(selectedDocs.size === 0 && selectedFolders.size === 0) || zipping}
                 className="rounded-xl border border-slate-300 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >

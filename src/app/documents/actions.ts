@@ -263,6 +263,37 @@ export async function renameDocument(formData: FormData): Promise<void> {
   revalidatePath('/')
 }
 
+/**
+ * Create a FRESH signed download URL for one document, on demand. Avoids the
+ * "InvalidJWT / exp claim" error you get when reusing a page-load signed URL
+ * that has since expired. Forces an attachment download with the real filename.
+ */
+export async function getDownloadUrl(documentId: string): Promise<{ url?: string; error?: string }> {
+  const id = String(documentId ?? '').trim()
+  if (!id) return { error: 'Document introuvable.' }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Session expirée, reconnecte-toi.' }
+
+  // RLS returns the row only if the caller may access it.
+  const { data: doc } = await supabase
+    .from('documents')
+    .select('storage_path, title')
+    .eq('id', id)
+    .maybeSingle()
+  if (!doc) return { error: 'Document introuvable.' }
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(doc.storage_path, 120, { download: doc.title })
+  if (error || !data?.signedUrl) return { error: 'Lien de téléchargement indisponible.' }
+
+  return { url: data.signedUrl }
+}
+
 /** Move a document into a folder (empty `folderId` = root). */
 export async function moveDocument(formData: FormData): Promise<void> {
   const id = String(formData.get('id') ?? '').trim()
