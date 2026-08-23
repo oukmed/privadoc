@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/lib/types/database'
 
 const PUBLIC_PATHS = [
+  '/', // public landing page (exact match only — see isPublic below)
   '/login',
   '/signup',
   '/forgot-password',

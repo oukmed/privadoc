@@ -10,6 +10,14 @@ import { revokeShare } from '@/app/documents/share-actions'
 import { ReturnUpload, type ReturnTarget } from '@/app/collaborators/return-upload'
 import { getProfile } from '@/app/account/profile'
 import { AppHeader } from '@/app/app-header'
+import { LandingPage } from '@/app/landing/landing-page'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'PrivaDoc — La collecte de documents pour les professionnels',
+  description:
+    'Google Drive vous donne un dossier vide. PrivaDoc vous dit quoi demander, collecte les pièces à votre place, et vous prévient quand elles arrivent. Hébergé en Europe, sans publicité.',
+}
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 60 * 60 // 1 hour (open links; downloads mint a fresh URL on click)
@@ -61,7 +69,7 @@ export default async function Home({
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) return <LandingPage />
 
   // Build the documents query (depends on user + params) before batching.
   let documentsQuery = supabase
