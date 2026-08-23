@@ -352,7 +352,7 @@ export function DocumentList({
               <span className="hidden sm:inline"> sélectionné(s)</span>
             </span>
 
-            <div className="ml-auto flex items-center gap-1">
+            <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto sm:flex-nowrap">
               <button
                 type="button"
                 onClick={() => setShareTargets([...selectedDocs])}
