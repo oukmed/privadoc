@@ -331,6 +331,9 @@ export function DocumentList({
         </ul>
       </div>
 
+      {/* Spacer so the fixed selection bar never hides the last rows. */}
+      {selectedCount > 0 && <div aria-hidden className="h-56 sm:h-24" />}
+
       {selectedCount > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6">
           <div className="flex w-full max-w-2xl flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-900">
