@@ -358,39 +358,23 @@ export function DocumentList({
                 type="button"
                 onClick={() => setShareTargets([...selectedDocs])}
                 disabled={selectedDocs.size === 0}
-                className="flex flex-col items-center justify-center gap-1 rounded-xl bg-indigo-600 py-2.5 text-xs font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <svg viewBox="0 0 24 24" fill="none" className="size-5" aria-hidden="true">
-                  <path d="M8 7l4-4 4 4M12 3v12M6 12v7h12v-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
                 Partager
               </button>
               <button
                 type="button"
                 onClick={downloadZip}
                 disabled={(selectedDocs.size === 0 && selectedFolders.size === 0) || zipping}
-                className="flex flex-col items-center justify-center gap-1 rounded-xl border border-slate-300 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="rounded-xl border border-slate-300 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                {zipping ? (
-                  <svg className="size-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" fill="none" className="size-5" aria-hidden="true">
-                    <path d="M8 11l4 4 4-4M12 15V3M6 21h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-                Télécharger
+                {zipping ? 'Préparation…' : 'Télécharger'}
               </button>
               <button
                 type="button"
                 onClick={() => setBulkConfirm(true)}
-                className="flex flex-col items-center justify-center gap-1 rounded-xl border border-red-200 py-2.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
+                className="rounded-xl border border-red-200 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
               >
-                <svg viewBox="0 0 24 24" fill="none" className="size-5" aria-hidden="true">
-                  <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
                 Supprimer
               </button>
             </div>
