@@ -158,6 +158,26 @@ export function DocumentList({
     }
   }
 
+  // A single file downloads on its own; a multi-selection (or any folder) is zipped.
+  function downloadSelection(): void {
+    if (selectedDocs.size === 1 && selectedFolders.size === 0) {
+      const id = [...selectedDocs][0]
+      const doc = documents.find((d) => d.id === id)
+      if (doc?.signedUrl) {
+        const anchor = document.createElement('a')
+        anchor.href = doc.signedUrl
+        anchor.target = '_blank'
+        anchor.rel = 'noopener noreferrer'
+        anchor.download = doc.title
+        document.body.appendChild(anchor)
+        anchor.click()
+        anchor.remove()
+        return
+      }
+    }
+    void downloadZip()
+  }
+
   async function handleBulkDelete(formData: FormData): Promise<void> {
     await deleteSelection(formData)
     setBulkConfirm(false)
@@ -364,11 +384,15 @@ export function DocumentList({
               </button>
               <button
                 type="button"
-                onClick={downloadZip}
+                onClick={downloadSelection}
                 disabled={(selectedDocs.size === 0 && selectedFolders.size === 0) || zipping}
                 className="rounded-xl border border-slate-300 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                {zipping ? 'Préparation…' : 'Télécharger'}
+                {zipping
+                  ? 'Préparation…'
+                  : selectedDocs.size === 1 && selectedFolders.size === 0
+                    ? 'Télécharger'
+                    : 'Télécharger (ZIP)'}
               </button>
               <button
                 type="button"
