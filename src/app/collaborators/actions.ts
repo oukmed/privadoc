@@ -188,6 +188,52 @@ export async function inviteCollaborator(
   return { message: `Invitation envoyée à ${email}.` }
 }
 
+export async function resendInvite(formData: FormData): Promise<void> {
+  const collaboratorId = String(formData.get('collaboratorId') ?? '').trim()
+  if (!collaboratorId) return
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return
+
+  // RLS scopes this to the owner's own collaborators. Skip anyone who already joined.
+  const { data: collaborator } = await supabase
+    .from('collaborators')
+    .select('email, role, user_id, accepted_at')
+    .eq('id', collaboratorId)
+    .maybeSingle()
+  if (!collaborator || collaborator.accepted_at) return
+
+  const existing = Boolean(collaborator.user_id)
+  const emailQuery = `?email=${encodeURIComponent(collaborator.email)}`
+  const target = existing ? `${APP_URL}/login${emailQuery}` : `${APP_URL}/signup${emailQuery}`
+
+  const { data: inviterProfile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', user.id)
+    .maybeSingle()
+  const inviterEmail = user.email ?? 'Un utilisateur'
+  const inviterName = inviterProfile?.display_name?.trim() || inviterEmail
+
+  await sendEmail({
+    to: collaborator.email,
+    subject: `${inviterName} vous partage des documents sur PrivaDoc`,
+    html: inviteEmailHtml({
+      inviterName,
+      inviterEmail,
+      role: parseRole(collaborator.role),
+      url: target,
+      existing,
+      recipientEmail: collaborator.email,
+    }),
+  })
+
+  revalidatePath('/collaborators')
+}
+
 export async function revokeAccess(formData: FormData): Promise<void> {
   const accessId = String(formData.get('accessId') ?? '').trim()
   if (!accessId) return
