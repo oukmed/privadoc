@@ -99,8 +99,132 @@ function bilinearSample(
   return out
 }
 
+/** Otsu's method: the luminance threshold that best splits a histogram into two classes. */
+function otsuThreshold(hist: number[], total: number): number {
+  let sum = 0
+  for (let i = 0; i < 256; i++) sum += i * hist[i]
+  let sumB = 0
+  let weightB = 0
+  let best = 0
+  let bestVariance = 0
+  for (let i = 0; i < 256; i++) {
+    weightB += hist[i]
+    if (weightB === 0) continue
+    const weightF = total - weightB
+    if (weightF === 0) break
+    sumB += i * hist[i]
+    const meanB = sumB / weightB
+    const meanF = (sum - sumB) / weightF
+    const variance = weightB * weightF * (meanB - meanF) * (meanB - meanF)
+    if (variance > bestVariance) {
+      bestVariance = variance
+      best = i
+    }
+  }
+  return best
+}
+
+/**
+ * Guesses the document's 4 corners so the adjustment screen opens already roughly
+ * aligned instead of a blind inset box. Downscaled grayscale + Otsu threshold segments
+ * "document" from "background", assuming the document was framed near the center of the
+ * photo; the 4 corners are then the mask's extreme points along x+y and x-y (a cheap,
+ * dependency-free stand-in for a full contour fit). Returns null when the guess looks
+ * unreliable, so the caller can fall back to a plain inset box.
+ */
+function detectDocumentCorners(img: HTMLImageElement): Corners | null {
+  const maxSide = 400
+  const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight))
+  const dw = Math.max(1, Math.round(img.naturalWidth * scale))
+  const dh = Math.max(1, Math.round(img.naturalHeight * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = dw
+  canvas.height = dh
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  ctx.drawImage(img, 0, 0, dw, dh)
+  const { data } = ctx.getImageData(0, 0, dw, dh)
+
+  const gray = new Uint8ClampedArray(dw * dh)
+  const hist = new Array(256).fill(0) as number[]
+  for (let i = 0; i < dw * dh; i++) {
+    const l = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]
+    gray[i] = l
+    hist[Math.round(l)]++
+  }
+  const threshold = otsuThreshold(hist, dw * dh)
+
+  // Assume the document sits near the frame's center; whichever side of the threshold
+  // dominates that central patch is the "document" class.
+  const cx0 = Math.floor(dw * 0.3)
+  const cx1 = Math.ceil(dw * 0.7)
+  const cy0 = Math.floor(dh * 0.3)
+  const cy1 = Math.ceil(dh * 0.7)
+  let aboveInCenter = 0
+  let belowInCenter = 0
+  for (let y = cy0; y < cy1; y++) {
+    for (let x = cx0; x < cx1; x++) {
+      if (gray[y * dw + x] > threshold) aboveInCenter++
+      else belowInCenter++
+    }
+  }
+  const documentIsAbove = aboveInCenter >= belowInCenter
+
+  let minSum = Infinity
+  let maxSum = -Infinity
+  let minDiff = Infinity
+  let maxDiff = -Infinity
+  let tl: Point | null = null
+  let tr: Point | null = null
+  let br: Point | null = null
+  let bl: Point | null = null
+  let count = 0
+  for (let y = 0; y < dh; y++) {
+    for (let x = 0; x < dw; x++) {
+      const isDoc = documentIsAbove ? gray[y * dw + x] > threshold : gray[y * dw + x] <= threshold
+      if (!isDoc) continue
+      count++
+      const s = x + y
+      const d = x - y
+      if (s < minSum) {
+        minSum = s
+        tl = { x, y }
+      }
+      if (s > maxSum) {
+        maxSum = s
+        br = { x, y }
+      }
+      if (d > maxDiff) {
+        maxDiff = d
+        tr = { x, y }
+      }
+      if (d < minDiff) {
+        minDiff = d
+        bl = { x, y }
+      }
+    }
+  }
+
+  const area = count / (dw * dh)
+  if (!tl || !tr || !br || !bl || area < 0.12 || area > 0.96) return null
+
+  const margin = 0.015
+  const toNorm = (p: Point): Point => ({
+    x: Math.min(Math.max(p.x / dw + (p.x < dw / 2 ? -margin : margin), 0), 1),
+    y: Math.min(Math.max(p.y / dh + (p.y < dh / 2 ? -margin : margin), 0), 1),
+  })
+  return [toNorm(tl), toNorm(tr), toNorm(br), toNorm(bl)]
+}
+
+interface ScanResult {
+  blob: Blob
+  width: number
+  height: number
+}
+
 /** Perspective-corrects the quad the user picked into a flat rectangle, optionally applying a document (B&W, high-contrast) look. */
-async function processScan(photoUrl: string, corners: Corners, enhance: boolean): Promise<Blob> {
+async function processScan(photoUrl: string, corners: Corners, enhance: boolean): Promise<ScanResult> {
   const img = await loadImage(photoUrl)
   const sw = img.naturalWidth
   const sh = img.naturalHeight
@@ -153,9 +277,67 @@ async function processScan(photoUrl: string, corners: Corners, enhance: boolean)
   }
   outCtx.putImageData(outData, 0, 0)
 
-  return new Promise((resolve, reject) => {
-    outCanvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('toBlob failed'))), 'image/jpeg', 0.92)
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    outCanvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/jpeg', 0.92)
   })
+  return { blob, width: W, height: H }
+}
+
+/** Minimal single-page PDF wrapping one JPEG as a DCTDecode image XObject — no library needed. */
+class PdfBuilder {
+  private chunks: (Uint8Array | string)[] = []
+  private length = 0
+  private offsets: number[] = []
+
+  private push(part: Uint8Array | string): void {
+    this.chunks.push(part)
+    this.length += typeof part === 'string' ? part.length : part.length
+  }
+
+  addObject(num: number, parts: (Uint8Array | string)[]): void {
+    this.offsets[num] = this.length
+    this.push(`${num} 0 obj\n`)
+    for (const part of parts) this.push(part)
+    this.push('\nendobj\n')
+  }
+
+  build(rootObjectCount: number): Uint8Array<ArrayBuffer> {
+    const xrefOffset = this.length
+    let xref = `xref\n0 ${rootObjectCount}\n0000000000 65535 f \n`
+    for (let i = 1; i < rootObjectCount; i++) {
+      xref += `${String(this.offsets[i]).padStart(10, '0')} 00000 n \n`
+    }
+    this.push(xref)
+    this.push(`trailer\n<< /Size ${rootObjectCount} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`)
+
+    const encoder = new TextEncoder()
+    const bytes = this.chunks.map((c) => (typeof c === 'string' ? encoder.encode(c) : c))
+    const total = new Uint8Array(bytes.reduce((n, b) => n + b.length, 0))
+    let offset = 0
+    for (const b of bytes) {
+      total.set(b, offset)
+      offset += b.length
+    }
+    return total
+  }
+}
+
+async function jpegToPdf(jpegBlob: Blob, width: number, height: number): Promise<Blob> {
+  const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer())
+  const b = new PdfBuilder()
+  b.addObject(1, ['<< /Type /Catalog /Pages 2 0 R >>'])
+  b.addObject(2, ['<< /Type /Pages /Kids [3 0 R] /Count 1 >>'])
+  b.addObject(3, [
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>`,
+  ])
+  const content = `q ${width} 0 0 ${height} 0 0 cm /Im0 Do Q`
+  b.addObject(4, [`<< /Length ${content.length} >>\nstream\n${content}\nendstream`])
+  b.addObject(5, [
+    `<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`,
+    jpegBytes,
+    '\nendstream',
+  ])
+  return new Blob([b.build(6)], { type: 'application/pdf' })
 }
 
 interface ScanButtonProps {
@@ -178,6 +360,23 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
   const [processing, setProcessing] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const draggingIndex = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!photoUrl) return
+    let cancelled = false
+    loadImage(photoUrl)
+      .then((img) => {
+        if (cancelled) return
+        const detected = detectDocumentCorners(img)
+        if (detected) setCorners(detected)
+      })
+      .catch(() => {
+        // Detection is best-effort; the default inset box stays as-is.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [photoUrl])
 
   if (!isMobile) return null
 
@@ -228,8 +427,9 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
     if (!photoUrl) return
     setProcessing(true)
     try {
-      const blob = await processScan(photoUrl, corners, enhance)
-      onCapture(new File([blob], `scan-${Date.now()}.jpg`, { type: 'image/jpeg' }))
+      const { blob, width, height } = await processScan(photoUrl, corners, enhance)
+      const pdfBlob = await jpegToPdf(blob, width, height)
+      onCapture(new File([pdfBlob], `scan-${Date.now()}.pdf`, { type: 'application/pdf' }))
       closeAdjust()
     } catch {
       // Leave the user on the adjustment screen so they can retry.
@@ -291,14 +491,14 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
                 type="button"
                 onPointerDown={handlePointerDown(i)}
                 aria-label={`Coin ${i + 1}`}
-                className="absolute size-8 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-white bg-indigo-600 shadow-lg"
+                className="absolute size-8 -translate-x-1/2 -translate-y-1/2 touch-none rounded-full border-2 border-white bg-indigo-600 shadow-lg transition-[left,top] duration-300"
                 style={{ left: `${c.x * 100}%`, top: `${c.y * 100}%` }}
               />
             ))}
           </div>
 
           <p className="mx-auto max-w-md text-center text-xs text-white/70">
-            Ajuste les 4 coins sur les bords du document.
+            Les coins sont détectés automatiquement — ajuste-les si besoin.
           </p>
 
           <label className="mx-auto flex w-full max-w-md items-center justify-center gap-2 text-sm text-white/90">
