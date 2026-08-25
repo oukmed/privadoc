@@ -4,29 +4,11 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { submitPiece } from '@/app/requests/actions'
+import { safeContentType, fileExtension } from '@/app/documents/upload-client'
+import { ScanButton } from '@/app/scan-button'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const MAX_FILE_BYTES = 20 * 1024 * 1024 // 20 MB
-
-// Content types a browser may execute inline (stored-XSS risk via a shared file).
-const DANGEROUS_CONTENT_TYPES = new Set([
-  'text/html',
-  'application/xhtml+xml',
-  'image/svg+xml',
-  'application/xml',
-  'text/xml',
-])
-
-function safeContentType(type: string): string {
-  return !type || DANGEROUS_CONTENT_TYPES.has(type.toLowerCase()) ? 'application/octet-stream' : type
-}
-
-function fileExtension(name: string): string {
-  const dot = name.lastIndexOf('.')
-  if (dot <= 0) return ''
-  const ext = name.slice(dot + 1).toLowerCase()
-  return /^[a-z0-9]{1,12}$/.test(ext) ? `.${ext}` : ''
-}
 
 interface SubmitPieceProps {
   item: { id: string; label: string }
@@ -39,6 +21,14 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
+  function handleCapture(photo: File): void {
+    const input = formRef.current?.elements.namedItem('file') as HTMLInputElement | null
+    if (!input) return
+    const dt = new DataTransfer()
+    dt.items.add(photo)
+    input.files = dt.files
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
     setError(null)
@@ -46,17 +36,33 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
 
     const input = formRef.current?.elements.namedItem('file') as HTMLInputElement | null
     const file = input?.files?.[0]
-    if (!file || file.size === 0) {
+    if (!file) {
       setError('Choisis un fichier à déposer.')
-      return
-    }
-    if (file.size > MAX_FILE_BYTES) {
-      setError('Fichier trop volumineux (max 20 Mo).')
       return
     }
 
     setPending(true)
     try {
+      // Reading the real bytes (rather than trusting `file.size`) works around
+      // Google Drive "on demand" files reporting size 0 until their content is read.
+      let bytes: ArrayBuffer
+      try {
+        bytes = await file.arrayBuffer()
+      } catch {
+        setError('Fichier illisible. Réessaie, ou utilise « Scanner ».')
+        return
+      }
+      if (bytes.byteLength === 0) {
+        setError(
+          'Fichier vide. Depuis Google Drive, ouvre-le une fois pour le rendre disponible hors connexion, ou utilise « Scanner ».',
+        )
+        return
+      }
+      if (bytes.byteLength > MAX_FILE_BYTES) {
+        setError('Fichier trop volumineux (max 20 Mo).')
+        return
+      }
+
       const supabase = createClient()
       const {
         data: { user },
@@ -68,10 +74,11 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
 
       const contentType = safeContentType(file.type)
       const path = `${user.id}/${crypto.randomUUID()}${fileExtension(file.name)}`
+      const blob = new Blob([bytes], { type: contentType })
 
       const { error: uploadError } = await supabase.storage
         .from(BUCKET)
-        .upload(path, file, { contentType, upsert: false })
+        .upload(path, blob, { contentType, upsert: false })
       if (uploadError) {
         setError('Le téléversement a échoué : ' + uploadError.message)
         return
@@ -82,7 +89,7 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
         title: file.name,
         storagePath: path,
         mimeType: contentType,
-        sizeBytes: file.size,
+        sizeBytes: bytes.byteLength,
       })
       if (result.error) {
         setError(result.error)
@@ -111,6 +118,7 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
         required
         className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100 dark:text-slate-400 dark:file:bg-indigo-950/50 dark:file:text-indigo-300"
       />
+      <ScanButton onCapture={handleCapture} disabled={pending} />
       <button
         type="submit"
         disabled={pending}
