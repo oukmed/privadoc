@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppHeader } from '@/app/app-header'
 import { InviteDialog } from '@/app/collaborators/invite-dialog'
-import { revokeAccess, removeCollaborator, resendInvite } from '@/app/collaborators/actions'
+import { revokeAccess, removeCollaborator } from '@/app/collaborators/actions'
+import { ResendButton } from '@/app/collaborators/resend-button'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 import { resolveDisplayNames } from '@/lib/names'
 import { getProfile } from '@/app/account/profile'
@@ -123,15 +124,7 @@ export default async function CollaboratorsPage() {
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
-                      <form action={resendInvite}>
-                        <input type="hidden" name="collaboratorId" value={collaborator.id} />
-                        <button
-                          type="submit"
-                          className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
-                        >
-                          Relancer
-                        </button>
-                      </form>
+                      <ResendButton collaboratorId={collaborator.id} />
                       <form action={removeCollaborator}>
                         <input type="hidden" name="collaboratorId" value={collaborator.id} />
                         <button

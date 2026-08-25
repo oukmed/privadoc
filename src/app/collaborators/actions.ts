@@ -188,15 +188,18 @@ export async function inviteCollaborator(
   return { message: `Invitation envoyée à ${email}.` }
 }
 
-export async function resendInvite(formData: FormData): Promise<void> {
+export async function resendInvite(
+  _prevState: CollaboratorState,
+  formData: FormData,
+): Promise<CollaboratorState> {
   const collaboratorId = String(formData.get('collaboratorId') ?? '').trim()
-  if (!collaboratorId) return
+  if (!collaboratorId) return { error: 'Collaborateur introuvable.' }
 
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return
+  if (!user) return { error: 'Session expirée, reconnecte-toi.' }
 
   // RLS scopes this to the owner's own collaborators.
   const { data: collaborator } = await supabase
@@ -204,7 +207,7 @@ export async function resendInvite(formData: FormData): Promise<void> {
     .select('email, role, user_id')
     .eq('id', collaboratorId)
     .maybeSingle()
-  if (!collaborator) return
+  if (!collaborator) return { error: 'Collaborateur introuvable.' }
 
   const existing = Boolean(collaborator.user_id)
   const emailQuery = `?email=${encodeURIComponent(collaborator.email)}`
@@ -218,7 +221,7 @@ export async function resendInvite(formData: FormData): Promise<void> {
   const inviterEmail = user.email ?? 'Un utilisateur'
   const inviterName = inviterProfile?.display_name?.trim() || inviterEmail
 
-  await sendEmail({
+  const { error: emailError } = await sendEmail({
     to: collaborator.email,
     subject: `${inviterName} vous partage des documents sur PrivaDoc`,
     html: inviteEmailHtml({
@@ -230,8 +233,9 @@ export async function resendInvite(formData: FormData): Promise<void> {
       recipientEmail: collaborator.email,
     }),
   })
+  if (emailError) return { error: `L'email n'a pas pu être envoyé : ${emailError}` }
 
-  revalidatePath('/collaborators')
+  return { message: `Relance envoyée à ${collaborator.email}.` }
 }
 
 export async function revokeAccess(formData: FormData): Promise<void> {
