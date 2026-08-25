@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { uploadDocumentFiles } from '@/app/documents/upload-client'
+import { ScanButton } from '@/app/scan-button'
 
 interface UploadFormProps {
   /** Optional target folder; uploads land here when set. */
@@ -15,6 +16,17 @@ export function UploadForm({ folderId }: UploadFormProps) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [scanCount, setScanCount] = useState(0)
+
+  function handleCapture(photo: File): void {
+    const input = formRef.current?.elements.namedItem('file') as HTMLInputElement | null
+    if (!input) return
+    const dt = new DataTransfer()
+    Array.from(input.files ?? []).forEach((f) => dt.items.add(f))
+    dt.items.add(photo)
+    input.files = dt.files
+    setScanCount((n) => n + 1)
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
@@ -35,6 +47,7 @@ export function UploadForm({ folderId }: UploadFormProps) {
       )
       if (result.added > 0) {
         formRef.current?.reset()
+        setScanCount(0)
         router.refresh()
       }
       setMessage(
@@ -64,6 +77,7 @@ export function UploadForm({ folderId }: UploadFormProps) {
           multiple
           className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100 dark:text-slate-400 dark:file:bg-indigo-950/50 dark:file:text-indigo-300"
         />
+        <ScanButton onCapture={handleCapture} disabled={pending} />
         <button
           type="submit"
           disabled={pending}
@@ -78,6 +92,13 @@ export function UploadForm({ folderId }: UploadFormProps) {
           {pending ? 'Téléversement…' : 'Téléverser'}
         </button>
       </div>
+
+      {scanCount > 0 && (
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          {scanCount} photo{scanCount > 1 ? 's' : ''} scannée{scanCount > 1 ? 's' : ''} ajoutée
+          {scanCount > 1 ? 's' : ''}.
+        </p>
+      )}
 
       {error && (
         <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">

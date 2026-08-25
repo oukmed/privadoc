@@ -12,16 +12,31 @@ const DANGEROUS_CONTENT_TYPES = new Set([
   'text/xml',
 ])
 
-function safeContentType(type: string): string {
+export function safeContentType(type: string): string {
   return !type || DANGEROUS_CONTENT_TYPES.has(type.toLowerCase()) ? 'application/octet-stream' : type
 }
 
-function fileExtension(name: string): string {
+export function fileExtension(name: string): string {
   const dot = name.lastIndexOf('.')
   if (dot <= 0) return ''
   const ext = name.slice(dot + 1).toLowerCase()
   return /^[a-z0-9]{1,12}$/.test(ext) ? `.${ext}` : ''
 }
+
+/**
+ * Reads a Blob's real byte content. On Android, a file picked from Google
+ * Drive "on demand" (not yet downloaded locally, or a native Google Doc)
+ * can report `file.size === 0` even though its content is readable — the OS
+ * only fetches it once something actually reads the bytes. Reading via
+ * arrayBuffer() forces that fetch, so we trust the real byte length instead
+ * of the (sometimes stale) `.size` property.
+ */
+async function readFileBytes(file: Blob): Promise<ArrayBuffer> {
+  return file.arrayBuffer()
+}
+
+const EMPTY_FILE_ERROR =
+  'Fichier vide. Depuis Google Drive, ouvre-le une fois pour le rendre disponible hors connexion, ou utilise « Scanner ».'
 
 /**
  * Uploads a Blob straight from the browser to Supabase Storage (owner folder,
@@ -33,13 +48,16 @@ export async function uploadDocumentFile(
   fileName: string,
   folderId?: string,
 ): Promise<{ error?: string }> {
-  if (!file || file.size === 0) {
-    return {
-      error:
-        'Fichier vide ou introuvable. Depuis Google Drive, télécharge-le d’abord sur le téléphone, ou utilise « Scanner ».',
-    }
+  if (!file) return { error: 'Fichier introuvable. Réessaie.' }
+
+  let bytes: ArrayBuffer
+  try {
+    bytes = await readFileBytes(file)
+  } catch {
+    return { error: 'Fichier illisible. Réessaie, ou utilise « Scanner ».' }
   }
-  if (file.size > MAX_FILE_BYTES) {
+  if (bytes.byteLength === 0) return { error: EMPTY_FILE_ERROR }
+  if (bytes.byteLength > MAX_FILE_BYTES) {
     return { error: 'Fichier trop volumineux (max 20 Mo).' }
   }
 
@@ -51,17 +69,18 @@ export async function uploadDocumentFile(
 
   const contentType = safeContentType(file.type)
   const path = `${user.id}/${crypto.randomUUID()}${fileExtension(fileName)}`
+  const blob = new Blob([bytes], { type: contentType })
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file, { contentType, upsert: false })
+    .upload(path, blob, { contentType, upsert: false })
   if (uploadError) return { error: 'Le téléversement a échoué : ' + uploadError.message }
 
   return registerDocument({
     title: fileName,
     storagePath: path,
     mimeType: contentType,
-    sizeBytes: file.size,
+    sizeBytes: bytes.byteLength,
     folderId,
   })
 }
@@ -95,23 +114,29 @@ export async function uploadDocumentFiles(
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i]
-    if (file.size === 0) firstError ??= `${file.name} : fichier vide ou introuvable.`
-    else if (file.size > MAX_FILE_BYTES) firstError ??= `${file.name} : trop volumineux (max 20 Mo).`
-    else {
-      const contentType = safeContentType(file.type)
-      const path = `${user.id}/${crypto.randomUUID()}${fileExtension(file.name)}`
-      const { error } = await supabase.storage
-        .from(BUCKET)
-        .upload(path, file, { contentType, upsert: false })
-      if (error) firstError ??= `${file.name} : ${error.message}`
-      else
-        items.push({
-          title: file.name,
-          storagePath: path,
-          mimeType: contentType,
-          sizeBytes: file.size,
-          folderId,
-        })
+    try {
+      const bytes = await readFileBytes(file)
+      if (bytes.byteLength === 0) firstError ??= `${file.name} : fichier vide.`
+      else if (bytes.byteLength > MAX_FILE_BYTES) firstError ??= `${file.name} : trop volumineux (max 20 Mo).`
+      else {
+        const contentType = safeContentType(file.type)
+        const path = `${user.id}/${crypto.randomUUID()}${fileExtension(file.name)}`
+        const blob = new Blob([bytes], { type: contentType })
+        const { error } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, blob, { contentType, upsert: false })
+        if (error) firstError ??= `${file.name} : ${error.message}`
+        else
+          items.push({
+            title: file.name,
+            storagePath: path,
+            mimeType: contentType,
+            sizeBytes: bytes.byteLength,
+            folderId,
+          })
+      }
+    } catch {
+      firstError ??= `${file.name} : fichier illisible.`
     }
     onProgress?.(i + 1, files.length)
   }

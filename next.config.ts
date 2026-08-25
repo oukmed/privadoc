@@ -24,7 +24,9 @@ const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  // camera=(self): needed for the mobile document scanner (<input capture>); without
+  // it some mobile browsers hide the camera option from the file picker entirely.
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
 ]
 
 const nextConfig: NextConfig = {
