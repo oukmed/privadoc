@@ -347,6 +347,39 @@ async function jpegToPdf(jpegBlob: Blob, width: number, height: number): Promise
   return new Blob([b.build(6)], { type: 'application/pdf' })
 }
 
+/**
+ * Grabs the sharpest photo the camera can give us. <input capture>'s "quick photo" mode
+ * caps out surprisingly low on many phones (observed ~1100x1400, worse than the scan's
+ * own output cap) because it's optimized for speed, not quality. A live getUserMedia
+ * stream lets us ask for a much higher resolution outright, and where the browser
+ * supports the ImageCapture API we bypass the video stream entirely and pull a still at
+ * the camera's full photo resolution — the same path native camera apps use.
+ */
+async function captureFromStream(stream: MediaStream, video: HTMLVideoElement): Promise<Blob> {
+  const track = stream.getVideoTracks()[0]
+  const ImageCaptureCtor = (
+    window as unknown as { ImageCapture?: new (t: MediaStreamTrack) => { takePhoto(): Promise<Blob> } }
+  ).ImageCapture
+  if (ImageCaptureCtor && track) {
+    try {
+      return await new ImageCaptureCtor(track).takePhoto()
+    } catch {
+      // Some browsers expose ImageCapture but fail takePhoto() on certain devices —
+      // fall through to grabbing a video frame instead.
+    }
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('2D context unavailable')
+  ctx.drawImage(video, 0, 0)
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/jpeg', 0.95)
+  })
+}
+
 interface ScanButtonProps {
   /** Called with the final, perspective-corrected scan. */
   onCapture: (file: File) => void
@@ -354,19 +387,34 @@ interface ScanButtonProps {
 }
 
 /**
- * Opens the device camera directly (skips the gallery) via <input capture>, then lets
- * the user align the document's 4 corners before warping the photo flat and applying a
- * document look — a real scan, not just a picture. Hidden on desktop, where there is no
- * camera to capture from.
+ * Opens a live camera preview (getUserMedia, full sensor resolution) so the document can
+ * be photographed and then aligned by its 4 corners before the photo is warped flat and
+ * given a document look — a real scan, not just a picture. Falls back to the OS's
+ * <input capture> picker when getUserMedia isn't available. Hidden on desktop, where
+ * there is no camera to capture from.
  */
 export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
   const isMobile = useIsMobile()
+  const [stream, setStream] = useState<MediaStream | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [corners, setCorners] = useState<Corners>(DEFAULT_CORNERS)
   const [enhance, setEnhance] = useState(true)
   const [processing, setProcessing] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const draggingIndex = useRef<number | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const fallbackInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!stream) return
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream
+      videoRef.current.play().catch(() => {})
+    }
+    return () => {
+      stream.getTracks().forEach((t) => t.stop())
+    }
+  }, [stream])
 
   useEffect(() => {
     if (!photoUrl) return
@@ -386,6 +434,41 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
   }, [photoUrl])
 
   if (!isMobile) return null
+
+  async function startScan(): Promise<void> {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      fallbackInputRef.current?.click()
+      return
+    }
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } },
+        audio: false,
+      })
+      setStream(s)
+    } catch {
+      // Permission denied, no camera, or an unsupported browser — fall back to the OS picker.
+      fallbackInputRef.current?.click()
+    }
+  }
+
+  function closeCamera(): void {
+    setStream(null)
+  }
+
+  async function capturePhoto(): Promise<void> {
+    const video = videoRef.current
+    if (!video || !stream) return
+    try {
+      const blob = await captureFromStream(stream, video)
+      setCorners(DEFAULT_CORNERS)
+      setPhotoUrl(URL.createObjectURL(blob))
+    } catch {
+      // Leave the live preview open so the user can try again.
+    } finally {
+      closeCamera()
+    }
+  }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0]
@@ -447,7 +530,12 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
 
   return (
     <>
-      <label className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+      <button
+        type="button"
+        onClick={startScan}
+        disabled={disabled}
+        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="size-4">
           <path
             d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M20 8V6a2 2 0 0 0-2-2h-2M20 16v2a2 2 0 0 1-2 2h-2"
@@ -458,15 +546,45 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
           <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
         </svg>
         Scanner
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          disabled={disabled}
-          onChange={handleChange}
-          className="sr-only"
-        />
-      </label>
+      </button>
+      {/* Fallback for browsers without getUserMedia: the OS's own camera picker. */}
+      <input
+        ref={fallbackInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        disabled={disabled}
+        onChange={handleChange}
+        className="sr-only"
+      />
+
+      {stream && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black p-4">
+          <div className="relative w-full max-w-md">
+            <video ref={videoRef} autoPlay playsInline muted className="block w-full rounded-lg" />
+            <div className="pointer-events-none absolute inset-6 rounded-lg border-2 border-dashed border-white/50" />
+          </div>
+          <p className="max-w-md text-center text-xs text-white/70">
+            Cadre le document en entier, bien à plat, puis prends la photo.
+          </p>
+          <div className="flex w-full max-w-md gap-3">
+            <button
+              type="button"
+              onClick={closeCamera}
+              className="flex-1 rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-white"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={capturePhoto}
+              className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Prendre la photo
+            </button>
+          </div>
+        </div>
+      )}
 
       {photoUrl && (
         <div className="fixed inset-0 z-50 flex flex-col justify-center gap-4 bg-black/90 p-4">
