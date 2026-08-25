@@ -294,6 +294,11 @@ class PdfBuilder {
     this.length += typeof part === 'string' ? part.length : part.length
   }
 
+  /** Every PDF must start with this — without it, no reader recognizes the file. */
+  writeHeader(): void {
+    this.push('%PDF-1.4\n')
+  }
+
   addObject(num: number, parts: (Uint8Array | string)[]): void {
     this.offsets[num] = this.length
     this.push(`${num} 0 obj\n`)
@@ -325,6 +330,7 @@ class PdfBuilder {
 async function jpegToPdf(jpegBlob: Blob, width: number, height: number): Promise<Blob> {
   const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer())
   const b = new PdfBuilder()
+  b.writeHeader()
   b.addObject(1, ['<< /Type /Catalog /Pages 2 0 R >>'])
   b.addObject(2, ['<< /Type /Pages /Kids [3 0 R] /Count 1 >>'])
   b.addObject(3, [
