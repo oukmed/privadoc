@@ -27,7 +27,8 @@ const DEFAULT_CORNERS: Corners = [
   { x: 0.1, y: 0.9 },
 ]
 
-const OUTPUT_MAX_SIDE = 1400
+// ~300 DPI for an A4 page's long edge — high enough that scanned text stays crisp.
+const OUTPUT_MAX_SIDE = 2480
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -278,7 +279,7 @@ async function processScan(photoUrl: string, corners: Corners, enhance: boolean)
   outCtx.putImageData(outData, 0, 0)
 
   const blob = await new Promise<Blob>((resolve, reject) => {
-    outCanvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/jpeg', 0.92)
+    outCanvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/jpeg', 0.95)
   })
   return { blob, width: W, height: H }
 }
