@@ -123,17 +123,15 @@ export default async function CollaboratorsPage() {
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
-                      {!collaborator.accepted_at && (
-                        <form action={resendInvite}>
-                          <input type="hidden" name="collaboratorId" value={collaborator.id} />
-                          <button
-                            type="submit"
-                            className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
-                          >
-                            Relancer
-                          </button>
-                        </form>
-                      )}
+                      <form action={resendInvite}>
+                        <input type="hidden" name="collaboratorId" value={collaborator.id} />
+                        <button
+                          type="submit"
+                          className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
+                        >
+                          Relancer
+                        </button>
+                      </form>
                       <form action={removeCollaborator}>
                         <input type="hidden" name="collaboratorId" value={collaborator.id} />
                         <button

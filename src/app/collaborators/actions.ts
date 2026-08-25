@@ -198,13 +198,13 @@ export async function resendInvite(formData: FormData): Promise<void> {
   } = await supabase.auth.getUser()
   if (!user) return
 
-  // RLS scopes this to the owner's own collaborators. Skip anyone who already joined.
+  // RLS scopes this to the owner's own collaborators.
   const { data: collaborator } = await supabase
     .from('collaborators')
-    .select('email, role, user_id, accepted_at')
+    .select('email, role, user_id')
     .eq('id', collaboratorId)
     .maybeSingle()
-  if (!collaborator || collaborator.accepted_at) return
+  if (!collaborator) return
 
   const existing = Boolean(collaborator.user_id)
   const emailQuery = `?email=${encodeURIComponent(collaborator.email)}`
