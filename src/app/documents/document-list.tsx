@@ -190,6 +190,18 @@ export function DocumentList({
     clearSelection()
   }
 
+  // Open a received document. Use the pre-signed URL when present, otherwise ask
+  // the server to mint one under RLS — so "Ouvrir" works for every share path.
+  async function openShared(doc: DocumentItem): Promise<void> {
+    if (doc.signedUrl) {
+      window.open(doc.signedUrl, '_blank', 'noopener')
+      return
+    }
+    const { url, error } = await getDownloadUrl(doc.id)
+    if (url) window.open(url, '_blank', 'noopener')
+    else alert(error ?? 'Document indisponible.')
+  }
+
   return (
     <>
       {sharedDocuments && sharedDocuments.length > 0 && (
@@ -233,16 +245,13 @@ export function DocumentList({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  {doc.signedUrl && (
-                    <a
-                      href={doc.signedUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
-                    >
-                      Ouvrir
-                    </a>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => openShared(doc)}
+                    className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
+                  >
+                    Ouvrir
+                  </button>
                   {doc.collaboratorId && (
                     <CollabActionButton
                       action={removeCollaborator}
