@@ -36,11 +36,17 @@ export async function sendEmail(args: SendEmailArgs): Promise<{ error?: string }
   })
 
   try {
+    // A plain-text alternative lowers spam scoring for otherwise HTML-only mail.
+    const text = args.html
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
     await transporter.sendMail({
       from: `PrivaDoc <${user}>`,
       to: args.to,
       subject: args.subject,
       html: args.html,
+      text,
     })
     return {}
   } catch (error: unknown) {

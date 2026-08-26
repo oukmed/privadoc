@@ -249,15 +249,29 @@ export async function revokeAccess(formData: FormData): Promise<void> {
   revalidatePath('/collaborators')
 }
 
-export async function removeCollaborator(formData: FormData): Promise<void> {
+export async function removeCollaborator(
+  _prevState: CollaboratorState,
+  formData: FormData,
+): Promise<CollaboratorState> {
   const collaboratorId = String(formData.get('collaboratorId') ?? '').trim()
-  if (!collaboratorId) return
+  if (!collaboratorId) return { error: 'Collaborateur introuvable.' }
 
   const supabase = await createClient()
-  // RLS restricts deletion to the owner; access rows cascade.
-  await supabase.from('collaborators').delete().eq('id', collaboratorId)
+  // RLS restricts deletion to the owner; access rows cascade. `.select()` returns
+  // the deleted rows so a silent RLS block (0 rows, no error) is caught.
+  const { data, error } = await supabase
+    .from('collaborators')
+    .delete()
+    .eq('id', collaboratorId)
+    .select('id')
+
+  if (error) return { error: `Échec du retrait : ${error.message}` }
+  if (!data || data.length === 0) {
+    return { error: 'Retrait impossible (accès refusé ou déjà retiré).' }
+  }
 
   revalidatePath('/collaborators')
+  return { message: 'Collaborateur retiré.' }
 }
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
