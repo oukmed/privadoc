@@ -271,6 +271,7 @@ export async function removeCollaborator(
   }
 
   revalidatePath('/collaborators')
+  revalidatePath('/') // shared-with-me list lives on the home page
   return { message: 'Collaborateur retiré.' }
 }
 

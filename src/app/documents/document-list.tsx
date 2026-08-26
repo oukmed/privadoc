@@ -8,6 +8,8 @@ import { ShareDialog } from '@/app/documents/share-dialog'
 import { MoveDialog } from '@/app/documents/move-dialog'
 import { deleteSelection, renameDocument, getDownloadUrl } from '@/app/documents/actions'
 import { deleteFolder, renameFolder } from '@/app/folders/actions'
+import { removeCollaborator } from '@/app/collaborators/actions'
+import { CollabActionButton } from '@/app/collaborators/resend-button'
 
 interface FolderItem {
   id: string
@@ -23,6 +25,8 @@ interface DocumentItem {
   signedUrl?: string
   /** True when a collaborator uploaded this into the owner's space. */
   received?: boolean
+  /** For shared-with-me docs: the collaboration that grants this doc (to leave it). */
+  collaboratorId?: string
 }
 
 interface DocumentListProps {
@@ -227,6 +231,26 @@ export function DocumentList({
                       </span>
                     )}
                   </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  {doc.signedUrl && (
+                    <a
+                      href={doc.signedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
+                    >
+                      Ouvrir
+                    </a>
+                  )}
+                  {doc.collaboratorId && (
+                    <CollabActionButton
+                      action={removeCollaborator}
+                      collaboratorId={doc.collaboratorId}
+                      label="Retirer"
+                      tone="red"
+                    />
+                  )}
                 </div>
               </li>
             ))}

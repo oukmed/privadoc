@@ -89,7 +89,7 @@ export default async function Home({
       documentsQuery.order(SORTS[sortKey].column, { ascending: SORTS[sortKey].ascending }),
       supabase
         .from('documents')
-        .select('id, title, storage_path, size_bytes, created_at')
+        .select('id, title, storage_path, size_bytes, created_at, owner_id')
         .neq('owner_id', user.id)
         .order('created_at', { ascending: false }),
       supabase
@@ -113,6 +113,12 @@ export default async function Home({
   const { data: shares } = sharesRes
   const { data: myLinks } = myLinksRes
   const { data: writeGrants } = writeGrantsRes
+
+  // owner_id → the collaboration row linking that owner to me, so a shared doc
+  // can offer "leave this owner's collaboration".
+  const ownerToCollaborator = new Map<string, string>(
+    (myLinks ?? []).map((l) => [l.owner_id, l.id]),
+  )
 
   const folders: Folder[] = allFolders ?? []
   const subfolders = folders.filter((f) => (f.parent_id ?? null) === currentFolderId)
@@ -215,6 +221,8 @@ export default async function Home({
               sizeBytes: doc.size_bytes,
               createdAt: doc.created_at,
               signedUrl: signedUrls.get(doc.storage_path),
+              // The collaboration (owner ↔ me) that grants this doc; used to leave it.
+              collaboratorId: ownerToCollaborator.get(doc.owner_id),
             }))}
           />
         )}
