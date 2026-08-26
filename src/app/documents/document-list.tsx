@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ConfirmDialog } from '@/app/documents/confirm-dialog'
 import { RenameDialog } from '@/app/documents/rename-dialog'
@@ -111,6 +111,30 @@ export function DocumentList({
   const [zipping, setZipping] = useState(false)
   const [zipError, setZipError] = useState<string | null>(null)
 
+  // Per-browser dismissal of shared-with-me items. Loaded after mount to avoid a
+  // hydration mismatch; wrapped in try/catch because storage can throw or be empty.
+  const HIDDEN_KEY = 'privadoc:hiddenShared'
+  const [hiddenShared, setHiddenShared] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    try {
+      setHiddenShared(new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]')))
+    } catch {
+      /* ignore unavailable/blocked storage */
+    }
+  }, [])
+  function hideShared(id: string): void {
+    setHiddenShared((prev) => {
+      const next = new Set(prev).add(id)
+      try {
+        localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next]))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
+  const visibleShared = (sharedDocuments ?? []).filter((d) => !hiddenShared.has(d.id))
+
   const totalCount = folders.length + documents.length
   const selectedCount = selectedDocs.size + selectedFolders.size
   const allSelected = totalCount > 0 && selectedCount === totalCount
@@ -204,7 +228,7 @@ export function DocumentList({
 
   return (
     <>
-      {sharedDocuments && sharedDocuments.length > 0 && (
+      {visibleShared.length > 0 && (
         <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-950/40">
             <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -212,7 +236,7 @@ export function DocumentList({
             </span>
           </div>
           <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-            {sharedDocuments.map((doc) => (
+            {visibleShared.map((doc) => (
               <li
                 key={doc.id}
                 className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40"
@@ -252,13 +276,21 @@ export function DocumentList({
                   >
                     Ouvrir
                   </button>
-                  {doc.collaboratorId && (
+                  {doc.collaboratorId ? (
                     <CollabActionButton
                       action={removeCollaborator}
                       collaboratorId={doc.collaboratorId}
                       label="Retirer"
                       tone="red"
                     />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => hideShared(doc.id)}
+                      className="text-sm font-medium text-red-600 transition hover:text-red-500 dark:text-red-400"
+                    >
+                      Retirer
+                    </button>
                   )}
                 </div>
               </li>
