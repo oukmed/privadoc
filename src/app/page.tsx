@@ -105,6 +105,9 @@ export default async function Home({
 
   // The super-admin has a dedicated platform console — never the client documents UI.
   if (profile.isAdmin) redirect('/admin')
+  // Professional accounts don't create or store personal folders — their entire
+  // workflow lives on /pro (client requests), so they never land on the vault.
+  if (profile.isProfessional) redirect('/pro')
   const { displayName } = profile
 
   const { data: allFolders, error: foldersError } = foldersRes

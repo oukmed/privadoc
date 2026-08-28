@@ -3,18 +3,23 @@ import { Brand } from '@/app/brand'
 import { signout } from '@/app/auth/actions'
 import { NotificationsBell } from '@/app/notifications/notifications-bell'
 import { MobileNav } from '@/app/mobile-nav'
-import { NAV_LINKS } from '@/app/nav-links'
+import { navLinksFor } from '@/app/nav-links'
+import { getProfile } from '@/app/account/profile'
 
 /** Shared header for every authenticated (client/pro) page: brand, primary nav,
  * notifications, a mobile hamburger, and sign-out. The admin console uses its own
- * distinct dark shell. */
-export function AppHeader() {
+ * distinct dark shell. Nav links are filtered by role — professional accounts
+ * skip the personal vault (see navLinksFor). */
+export async function AppHeader() {
+  const { isProfessional } = await getProfile()
+  const links = navLinksFor(isProfessional)
+
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
       <Brand />
       <div className="flex items-center gap-4">
         <nav className="hidden items-center gap-4 sm:flex">
-          {NAV_LINKS.map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -25,7 +30,7 @@ export function AppHeader() {
           ))}
         </nav>
         <NotificationsBell />
-        <MobileNav />
+        <MobileNav links={links} />
         <form action={signout}>
           <button
             type="submit"

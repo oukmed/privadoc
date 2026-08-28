@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { NAV_LINKS } from '@/app/nav-links'
+import type { NavLink } from '@/app/nav-links'
+
+interface MobileNavProps {
+  links: NavLink[]
+}
 
 /** Hamburger menu shown only below the `sm` breakpoint (the desktop nav is hidden there). */
-export function MobileNav() {
+export function MobileNav({ links }: MobileNavProps) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -46,7 +50,7 @@ export function MobileNav() {
             className="fixed inset-0 z-40 cursor-default"
           />
           <nav className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-800 dark:bg-slate-900">
-            {NAV_LINKS.map((link) => (
+            {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 
 export interface Profile {
@@ -23,8 +24,10 @@ const DEFAULT_PROFILE: Profile = {
 /**
  * The caller's profile flags. Creates a default row on first access so every
  * signed-in user has a profile. Returns sane defaults when unauthenticated.
+ * Wrapped in React's cache() so AppHeader and the page body share one query
+ * per request instead of two.
  */
-export async function getProfile(): Promise<Profile> {
+export const getProfile = cache(async (): Promise<Profile> => {
   const supabase = await createClient()
   const {
     data: { user },
@@ -50,4 +53,4 @@ export async function getProfile(): Promise<Profile> {
   // First visit: create the row (RLS WITH CHECK requires id = auth.uid()).
   await supabase.from('profiles').upsert({ id: user.id })
   return DEFAULT_PROFILE
-}
+})
