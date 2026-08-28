@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { AppHeader } from '@/app/app-header'
+import { ClientShell } from '@/app/client-shell'
 import { InviteDialog } from '@/app/collaborators/invite-dialog'
 import { revokeAccess, resendInvite, removeCollaborator } from '@/app/collaborators/actions'
 import { CollabActionButton } from '@/app/collaborators/resend-button'
@@ -69,10 +69,8 @@ export default async function CollaboratorsPage() {
   ])
 
   return (
-    <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-      <AppHeader />
-
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+    <ClientShell>
+      <div className="mx-auto w-full max-w-3xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
             Collaborateurs
@@ -208,7 +206,7 @@ export default async function CollaboratorsPage() {
             })}
           </ul>
         )}
-      </main>
-    </div>
+      </div>
+    </ClientShell>
   )
 }

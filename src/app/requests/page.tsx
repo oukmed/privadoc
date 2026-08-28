@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { AppHeader } from '@/app/app-header'
+import { ClientShell } from '@/app/client-shell'
 import { SubmitPiece } from '@/app/requests/submit-piece'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 
@@ -91,10 +91,8 @@ export default async function RequestsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-      <AppHeader />
-
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+    <ClientShell>
+      <div className="mx-auto w-full max-w-3xl">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
           Demandes de pièces
         </h1>
@@ -199,7 +197,7 @@ export default async function RequestsPage() {
             })}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </ClientShell>
   )
 }

@@ -12,13 +12,14 @@ export const NAV_LINKS = [
 
 export type NavLink = (typeof NAV_LINKS)[number]
 
-// Professional accounts run entirely on the /pro client-request workflow — they
-// don't create or store personal folders, and "Mes demandes" (/requests) is the
-// CLIENT inbox (requests addressed to you), which a pro is never on the receiving
-// end of. All three stay out of a pro's nav; the /pro space has its own sidebar.
+// Each role gets its own platform. A pro runs entirely on /pro (its own sidebar),
+// so the personal vault, its sharing, and the CLIENT inbox (/requests) stay out
+// of a pro's nav. A private client, conversely, never sees the pro space — their
+// platform is the vault + sharing + their request inbox.
 const PRO_HIDDEN_HREFS = new Set(['/', '/requests', '/collaborators'])
+const CLIENT_HIDDEN_HREFS = new Set(['/pro'])
 
 export function navLinksFor(isProfessional: boolean): NavLink[] {
-  if (!isProfessional) return [...NAV_LINKS]
-  return NAV_LINKS.filter((link) => !PRO_HIDDEN_HREFS.has(link.href))
+  const hidden = isProfessional ? PRO_HIDDEN_HREFS : CLIENT_HIDDEN_HREFS
+  return NAV_LINKS.filter((link) => !hidden.has(link.href))
 }
