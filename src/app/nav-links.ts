@@ -13,9 +13,10 @@ export const NAV_LINKS = [
 export type NavLink = (typeof NAV_LINKS)[number]
 
 // Professional accounts run entirely on the /pro client-request workflow — they
-// don't create or store personal folders, so the personal vault and its sharing
-// feature stay out of their nav.
-const PRO_HIDDEN_HREFS = new Set(['/', '/collaborators'])
+// don't create or store personal folders, and "Mes demandes" (/requests) is the
+// CLIENT inbox (requests addressed to you), which a pro is never on the receiving
+// end of. All three stay out of a pro's nav; the /pro space has its own sidebar.
+const PRO_HIDDEN_HREFS = new Set(['/', '/requests', '/collaborators'])
 
 export function navLinksFor(isProfessional: boolean): NavLink[] {
   if (!isProfessional) return [...NAV_LINKS]

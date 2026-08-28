@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { AppHeader } from '@/app/app-header'
 import { reviewItem } from '@/app/pro/actions'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
@@ -81,11 +80,8 @@ export default async function RequestDetailPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
-      <AppHeader />
-
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <nav aria-label="Fil d'Ariane" className="flex flex-wrap items-center gap-1 text-sm">
+    <div className="mx-auto w-full max-w-3xl">
+      <nav aria-label="Fil d'Ariane" className="flex flex-wrap items-center gap-1 text-sm">
           <Link href="/pro" className="font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400">
             Espace pro
           </Link>
@@ -179,8 +175,7 @@ export default async function RequestDetailPage({
               </li>
             )
           })}
-        </ul>
-      </main>
+      </ul>
     </div>
   )
 }
