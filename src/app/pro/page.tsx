@@ -7,12 +7,25 @@ import { requestProAccount } from '@/app/account/actions'
 import { RECIPIENT_ROLES, ROLE_LABELS } from '@/lib/roles'
 import { CreateRequestDialog } from '@/app/pro/create-request-dialog'
 import { deleteRequest } from '@/app/pro/actions'
+import { resolveDisplayNames } from '@/lib/names'
+
+const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
+const SIGNED_URL_TTL = 60 * 60 // 1 hour
+
+interface SharedDoc {
+  id: string
+  title: string
+  storage_path: string
+  created_at: string
+  owner_id: string
+}
 
 interface RequestItem {
   id: string
   label: string
   status: string
   due_date: string | null
+  document_id: string | null
 }
 
 interface RequestRow {
@@ -191,11 +204,40 @@ export default async function ProPage() {
     )
   }
 
-  const { data: requestsData } = await supabase
-    .from('document_requests')
-    .select('id, title, status, client_email, client_name, request_items(id, label, status, due_date)')
-    .order('created_at', { ascending: false })
+  // A pro can also be a collaborator on a client's personal vault (e.g. an
+  // accountant a client shares documents with). Those incoming shares live on /
+  // for private users, but a pro is redirected here — so surface them below.
+  const [{ data: requestsData }, { data: sharedDocsData }] = await Promise.all([
+    supabase
+      .from('document_requests')
+      .select('id, title, status, client_email, client_name, request_items(id, label, status, due_date, document_id)')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('documents')
+      .select('id, title, storage_path, created_at, owner_id')
+      .neq('owner_id', user.id)
+      .order('created_at', { ascending: false }),
+  ])
   const requests = (requestsData ?? []) as RequestRow[]
+
+  // The pro can also read client-uploaded pieces attached to their own requests
+  // (documents_select_via_request RLS) — those belong to the request workflow, not
+  // here. Keep only documents shared via the collaborator system.
+  const requestDocIds = new Set(
+    requests.flatMap((r) => r.request_items.map((it) => it.document_id).filter(Boolean)),
+  )
+  const sharedDocs = ((sharedDocsData ?? []) as SharedDoc[]).filter((d) => !requestDocIds.has(d.id))
+
+  // Short-lived signed download URLs + the sharer's display name for each doc.
+  const signedUrls = new Map<string, string>()
+  const sharedPaths = sharedDocs.map((d) => d.storage_path)
+  if (sharedPaths.length > 0) {
+    const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrls(sharedPaths, SIGNED_URL_TTL)
+    for (const entry of signed ?? []) {
+      if (entry.signedUrl) signedUrls.set(entry.path ?? '', entry.signedUrl)
+    }
+  }
+  const sharerNames = await resolveDisplayNames(sharedDocs.map((d) => d.owner_id))
 
   const clients = [
     ...new Set(
@@ -255,6 +297,44 @@ export default async function ProPage() {
           <Kpi label="Pièces à valider" value={toReview.length} accent />
           <Kpi label="Dossiers terminés" value={completedCount} />
         </div>
+
+        {/* Documents a client has shared with this pro (collaboration on their vault) */}
+        {sharedDocs.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Partagé avec moi ({sharedDocs.length})
+            </h2>
+            <ul className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white divide-y divide-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:divide-slate-800">
+              {sharedDocs.map((doc) => {
+                const url = signedUrls.get(doc.storage_path)
+                const sharer = sharerNames.get(doc.owner_id)
+                return (
+                  <li key={doc.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {doc.title}
+                      </p>
+                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                        {sharer ? `Partagé par ${sharer} · ` : ''}
+                        {new Date(doc.created_at).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                    {url && (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                      >
+                        Ouvrir
+                      </a>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
 
         {requests.length === 0 ? (
           <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
