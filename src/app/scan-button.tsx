@@ -27,8 +27,9 @@ const DEFAULT_CORNERS: Corners = [
   { x: 0.1, y: 0.9 },
 ]
 
-// ~300 DPI for an A4 page's long edge — high enough that scanned text stays crisp.
-const OUTPUT_MAX_SIDE = 2480
+// Long-edge cap for the flattened scan. ~250 DPI on A4 — crisp text, while keeping
+// the per-pixel warp + adaptive-threshold buffers within iOS Safari's memory budget.
+const OUTPUT_MAX_SIDE = 2000
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -67,10 +68,6 @@ function squareToQuad(p0: Point, p1: Point, p2: Point, p3: Point) {
     const w = g * u + h * v + 1
     return { x: (a * u + b * v + c) / w, y: (d * u + e * v + f) / w }
   }
-}
-
-function clamp255(v: number): number {
-  return v < 0 ? 0 : v > 255 ? 255 : v
 }
 
 function bilinearSample(
@@ -218,6 +215,45 @@ function detectDocumentCorners(img: HTMLImageElement): Corners | null {
   return [toNorm(tl), toNorm(tr), toNorm(br), toNorm(bl)]
 }
 
+/**
+ * Adaptive (local-mean) binarization for the document look. Each pixel goes black or
+ * white by comparing it to the average of its neighbourhood, not one global cutoff —
+ * so a page half in shadow (typical phone photo) stays fully legible where a flat
+ * contrast curve would crush the dark corner. Integral image → O(1) box mean per pixel.
+ */
+function adaptiveThreshold(gray: Float32Array, W: number, H: number, out: Uint8ClampedArray): void {
+  const stride = W + 1
+  const integral = new Float64Array(stride * (H + 1)) // summed-area table, zero-padded
+  for (let y = 0; y < H; y++) {
+    let rowSum = 0
+    for (let x = 0; x < W; x++) {
+      rowSum += gray[y * W + x]
+      integral[(y + 1) * stride + (x + 1)] = integral[y * stride + (x + 1)] + rowSum
+    }
+  }
+  const radius = Math.max(8, Math.round(Math.min(W, H) / 40)) // ~document-scale window
+  const bias = 10 // how far below the local mean still counts as ink
+  for (let y = 0; y < H; y++) {
+    const y0 = Math.max(0, y - radius)
+    const y1 = Math.min(H - 1, y + radius)
+    for (let x = 0; x < W; x++) {
+      const x0 = Math.max(0, x - radius)
+      const x1 = Math.min(W - 1, x + radius)
+      const sum =
+        integral[(y1 + 1) * stride + (x1 + 1)] -
+        integral[y0 * stride + (x1 + 1)] -
+        integral[(y1 + 1) * stride + x0] +
+        integral[y0 * stride + x0]
+      const mean = sum / ((x1 - x0 + 1) * (y1 - y0 + 1))
+      const v = gray[y * W + x] < mean - bias ? 0 : 255
+      const di = (y * W + x) * 4
+      out[di] = v
+      out[di + 1] = v
+      out[di + 2] = v
+    }
+  }
+}
+
 interface ScanResult {
   blob: Blob
   width: number
@@ -255,6 +291,9 @@ async function processScan(photoUrl: string, corners: Corners, enhance: boolean)
   if (!outCtx) throw new Error('2D context unavailable')
   const outData = outCtx.createImageData(W, H)
 
+  // Warp source → flat rectangle. For the document look we gather luminance first, then
+  // adaptive-threshold it in one shot (below); colour mode writes pixels directly.
+  const gray = enhance ? new Float32Array(W * H) : null
   for (let py = 0; py < H; py++) {
     const v = py / H
     for (let px = 0; px < W; px++) {
@@ -262,12 +301,8 @@ async function processScan(photoUrl: string, corners: Corners, enhance: boolean)
       const { x, y } = mapUV(u, v)
       const [r, g, b, a] = bilinearSample(srcData.data, sw, sh, x, y)
       const di = (py * W + px) * 4
-      if (enhance) {
-        const gray = 0.299 * r + 0.587 * g + 0.114 * b
-        const contrasted = clamp255((gray - 128) * 1.35 + 128 + 18)
-        outData.data[di] = contrasted
-        outData.data[di + 1] = contrasted
-        outData.data[di + 2] = contrasted
+      if (gray) {
+        gray[py * W + px] = 0.299 * r + 0.587 * g + 0.114 * b
       } else {
         outData.data[di] = r
         outData.data[di + 1] = g
@@ -276,6 +311,7 @@ async function processScan(photoUrl: string, corners: Corners, enhance: boolean)
       outData.data[di + 3] = a
     }
   }
+  if (gray) adaptiveThreshold(gray, W, H, outData.data)
   outCtx.putImageData(outData, 0, 0)
 
   const blob = await new Promise<Blob>((resolve, reject) => {
@@ -559,9 +595,9 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
       />
 
       {stream && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black p-4">
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 overflow-y-auto bg-black p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <div className="relative w-full max-w-md">
-            <video ref={videoRef} autoPlay playsInline muted className="block w-full rounded-lg" />
+            <video ref={videoRef} autoPlay playsInline muted className="block max-h-[62vh] w-full rounded-lg object-contain" />
             <div className="pointer-events-none absolute inset-6 rounded-lg border-2 border-dashed border-white/50" />
           </div>
           <p className="max-w-md text-center text-xs text-white/70">
@@ -587,16 +623,16 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
       )}
 
       {photoUrl && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-center gap-4 bg-black/90 p-4">
+        <div className="fixed inset-0 z-50 flex flex-col justify-center gap-4 overflow-y-auto bg-black/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <div
             ref={containerRef}
-            className="relative mx-auto w-full max-w-md touch-none select-none"
+            className="relative mx-auto w-fit max-w-full touch-none select-none"
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- object URL, not a static/remote asset Next can optimize */}
-            <img src={photoUrl} alt="" className="block w-full" draggable={false} />
+            <img src={photoUrl} alt="" className="block max-h-[58vh] w-auto max-w-full" draggable={false} />
             <svg
               className="pointer-events-none absolute inset-0 h-full w-full"
               viewBox="0 0 100 100"
