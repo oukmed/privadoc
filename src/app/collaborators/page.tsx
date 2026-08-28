@@ -34,6 +34,11 @@ export default async function CollaboratorsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Collaborators is a personal-vault surface. Professional accounts run entirely
+  // on /pro and never share personal folders, so they never land here.
+  const { displayName, isProfessional } = await getProfile()
+  if (isProfessional) redirect('/pro')
+
   const [{ data: collaborators }, { data: access }, { data: documents }, { data: folders }] =
     await Promise.all([
       supabase
@@ -62,9 +67,6 @@ export default async function CollaboratorsPage() {
     ...rows.map((c) => c.user_id),
     ...rows.map((c) => c.owner_id),
   ])
-
-  // Ask the inviter for their name in the dialog if they haven't set one.
-  const { displayName } = await getProfile()
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 dark:bg-slate-950">
