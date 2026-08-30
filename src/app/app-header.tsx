@@ -11,8 +11,8 @@ import { getProfile } from '@/app/account/profile'
  * distinct dark shell. Nav links are filtered by role — professional accounts
  * skip the personal vault (see navLinksFor). */
 export async function AppHeader() {
-  const { isProfessional } = await getProfile()
-  const links = navLinksFor(isProfessional)
+  const { isProfessional, proStatus } = await getProfile()
+  const links = navLinksFor(isProfessional, proStatus)
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">

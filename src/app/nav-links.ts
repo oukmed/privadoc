@@ -19,7 +19,10 @@ export type NavLink = (typeof NAV_LINKS)[number]
 const PRO_HIDDEN_HREFS = new Set(['/', '/requests', '/collaborators'])
 const CLIENT_HIDDEN_HREFS = new Set(['/pro'])
 
-export function navLinksFor(isProfessional: boolean): NavLink[] {
-  const hidden = isProfessional ? PRO_HIDDEN_HREFS : CLIENT_HIDDEN_HREFS
+export function navLinksFor(isProfessional: boolean, proStatus?: string | null): NavLink[] {
+  // A pro awaiting admin approval gets the pro nav too — "Espace pro" leads to the
+  // "validation en cours" screen — never the private client links.
+  const showProSpace = isProfessional || proStatus === 'pending'
+  const hidden = showProSpace ? PRO_HIDDEN_HREFS : CLIENT_HIDDEN_HREFS
   return NAV_LINKS.filter((link) => !hidden.has(link.href))
 }

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ClientShell } from '@/app/client-shell'
+import { getProfile } from '@/app/account/profile'
 import { SubmitPiece } from '@/app/requests/submit-piece'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 
@@ -54,6 +55,11 @@ export default async function RequestsPage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // /requests is the private client inbox — pros (and pros awaiting approval)
+  // belong on /pro, not here.
+  const profile = await getProfile()
+  if (profile.isProfessional || profile.proStatus === 'pending') redirect('/pro')
 
   const { data: requests, error } = await supabase
     .from('document_requests')
