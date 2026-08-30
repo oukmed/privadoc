@@ -38,6 +38,8 @@ export function AuthForm({
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(action, undefined)
   const [showPassword, setShowPassword] = useState(false)
+  const [accountType, setAccountType] = useState<'private' | 'pro'>('private')
+  const isPro = accountType === 'pro'
 
   return (
     <main className="flex min-h-full flex-1 items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50 px-4 py-16 dark:from-slate-950 dark:to-indigo-950">
@@ -53,24 +55,62 @@ export function AuthForm({
           <form action={formAction} className="mt-6 space-y-4">
             {next && <input type="hidden" name="next" value={next} />}
             {showName && (
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="displayName"
-                  className="block text-sm font-medium text-slate-700 dark:text-slate-300"
-                >
-                  Nom complet ou cabinet
-                </label>
-                <input
-                  id="displayName"
-                  name="displayName"
-                  type="text"
-                  autoComplete="name"
-                  required
-                  maxLength={120}
-                  placeholder="Jean Dupont"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                />
-              </div>
+              <>
+                <div className="space-y-1.5">
+                  <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Type de compte
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(
+                      [
+                        { value: 'private', label: 'Particulier', hint: 'Coffre-fort personnel' },
+                        { value: 'pro', label: 'Professionnel', hint: 'Demander des pièces' },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setAccountType(opt.value)}
+                        aria-pressed={accountType === opt.value}
+                        className={`rounded-lg border px-3 py-2 text-left transition ${
+                          accountType === opt.value
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950/50 dark:text-indigo-300'
+                            : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:text-slate-400'
+                        }`}
+                      >
+                        <span className="block text-sm font-medium">{opt.label}</span>
+                        <span className="block text-xs opacity-70">{opt.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <input type="hidden" name="accountType" value={accountType} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="displayName"
+                    className="block text-sm font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    {isPro ? 'Nom ou organisme' : 'Nom complet'}
+                  </label>
+                  <input
+                    id="displayName"
+                    name="displayName"
+                    type="text"
+                    autoComplete={isPro ? 'organization' : 'name'}
+                    required
+                    maxLength={120}
+                    placeholder={isPro ? 'Cabinet Dupont & Associés' : 'Jean Dupont'}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                  />
+                </div>
+
+                {isPro && (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                    Le compte professionnel est activé après validation par un administrateur.
+                  </p>
+                )}
+              </>
             )}
             <div className="space-y-1.5">
               <label

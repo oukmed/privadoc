@@ -136,6 +136,24 @@ export async function signup(_prevState: AuthState, formData: FormData): Promise
   const hashedToken = data?.properties?.hashed_token
   if (!hashedToken) return { error: 'Impossible de créer le compte. Réessaie.' }
 
+  // Persist the chosen account type + name/organisation on the profile. A pro is
+  // created 'pending' (is_professional stays false) so it goes through the same
+  // admin approval as the /pro onboarding. Admin client: the user isn't signed in
+  // yet, and it bypasses the profiles column guard.
+  const displayName = String(formData.get('displayName') ?? '').trim().slice(0, 120)
+  const isPro = formData.get('accountType') === 'pro'
+  const userId = data?.user?.id
+  if (userId) {
+    await createAdminClient()
+      .from('profiles')
+      .upsert({
+        id: userId,
+        ...(displayName ? { display_name: displayName } : {}),
+        account_type: isPro ? 'pro' : 'private',
+        pro_status: isPro ? 'pending' : null,
+      })
+  }
+
   const next = safeNext(formData.get('next'))
   const url = `${APP_URL}/auth/confirm?token_hash=${hashedToken}&type=signup&next=${encodeURIComponent(next)}`
   const { error: emailError } = await sendEmail({
