@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/app/account/profile'
 import { getProRequests, groupByClient, requestProgress } from '@/app/pro/data'
+import { getT } from '@/lib/i18n/server'
 import {
   PageHeader,
   Card,
@@ -23,22 +24,23 @@ export default async function ClientsPage() {
   const profile = await getProfile()
   if (!profile.isProfessional) redirect('/pro')
 
+  const t = await getT()
   const groups = groupByClient(await getProRequests())
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Clients"
-        subtitle="Vos clients et l'avancement de leurs dossiers."
-        action={<ButtonLink href="/pro/nouvelle-demande">Nouvelle demande</ButtonLink>}
+        title={t('pro.clients.title')}
+        subtitle={t('pro.clients.subtitle')}
+        action={<ButtonLink href="/pro/nouvelle-demande">{t('pro.common.newRequest')}</ButtonLink>}
       />
 
       {groups.length === 0 ? (
         <Card>
           <EmptyState
-            cta={<ButtonLink href="/pro/nouvelle-demande">Nouvelle demande</ButtonLink>}
+            cta={<ButtonLink href="/pro/nouvelle-demande">{t('pro.common.newRequest')}</ButtonLink>}
           >
-            Aucun client pour l&apos;instant. Créez une première demande pour ajouter un client.
+            {t('pro.clients.empty')}
           </EmptyState>
         </Card>
       ) : (
@@ -62,11 +64,11 @@ export default async function ClientsPage() {
                   <div className="flex flex-1 items-center justify-end gap-4">
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
-                        {group.openCount} en cours
+                        {t('pro.clients.openCount', { count: group.openCount })}
                       </span>
                       {group.toReviewCount > 0 && (
                         <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                          {group.toReviewCount} à valider
+                          {t('pro.common.toReviewCount', { count: group.toReviewCount })}
                         </span>
                       )}
                     </div>
@@ -93,7 +95,7 @@ export default async function ClientsPage() {
                               {request.title}
                             </p>
                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                              {validated}/{total} validées
+                              {t('pro.requests.progressLabel', { validated, total })}
                             </p>
                           </div>
                           <StatusBadge status={request.status} kind="request" />

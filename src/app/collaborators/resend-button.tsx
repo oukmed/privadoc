@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import type { CollaboratorState } from '@/app/collaborators/actions'
+import { useT } from '@/lib/i18n/client'
 
 type CollabAction = (prev: CollaboratorState, formData: FormData) => Promise<CollaboratorState>
 
@@ -21,6 +22,7 @@ export function CollabActionButton({
   label: string
   tone: 'indigo' | 'red'
 }) {
+  const t = useT()
   const [state, formAction, pending] = useActionState(action, undefined)
   const color =
     tone === 'red'
@@ -45,7 +47,7 @@ export function CollabActionButton({
           title={state.error}
           className="text-xs font-medium text-red-600 dark:text-red-400"
         >
-          Échec
+          {t('inbox.collab.failure')}
         </span>
       )}
     </form>

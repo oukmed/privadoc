@@ -4,6 +4,9 @@ import { ClientShell } from '@/app/client-shell'
 import { getProfile } from '@/app/account/profile'
 import { SubmitPiece } from '@/app/requests/submit-piece'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
+import { getT } from '@/lib/i18n/server'
+
+type Translate = (key: string, vars?: Record<string, string | number>) => string
 
 function senderLabel(name: string | null, profession: string | null): string | null {
   if (!name) return null
@@ -16,27 +19,23 @@ const SIGNED_URL_TTL = 60 * 5 // 5 minutes
 
 type ItemStatus = 'pending' | 'submitted' | 'validated' | 'rejected'
 
-const STATUS_BADGE: Record<ItemStatus, { label: string; className: string }> = {
-  pending: {
-    label: 'En attente',
-    className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-  },
-  submitted: {
-    label: 'Déposée',
-    className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300',
-  },
-  validated: {
-    label: 'Validée',
-    className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
-  },
-  rejected: {
-    label: 'À refaire',
-    className: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300',
-  },
+const STATUS_BADGE_CLASS: Record<ItemStatus, string> = {
+  pending: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  submitted: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300',
+  validated: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
+  rejected: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300',
 }
 
-function badgeFor(status: string): { label: string; className: string } {
-  return STATUS_BADGE[status as ItemStatus] ?? STATUS_BADGE.pending
+const STATUS_LABEL_KEY: Record<ItemStatus, string> = {
+  pending: 'inbox.requests.status.pending',
+  submitted: 'inbox.requests.status.submitted',
+  validated: 'inbox.requests.status.validated',
+  rejected: 'inbox.requests.status.rejected',
+}
+
+function badgeFor(status: string, t: Translate): { label: string; className: string } {
+  const key: ItemStatus = status in STATUS_BADGE_CLASS ? (status as ItemStatus) : 'pending'
+  return { label: t(STATUS_LABEL_KEY[key]), className: STATUS_BADGE_CLASS[key] }
 }
 
 interface RequestItemRow {
@@ -60,6 +59,8 @@ export default async function RequestsPage() {
   // belong on /pro, not here.
   const profile = await getProfile()
   if (profile.isProfessional || profile.proStatus === 'pending') redirect('/pro')
+
+  const t = await getT()
 
   const { data: requests, error } = await supabase
     .from('document_requests')
@@ -100,21 +101,21 @@ export default async function RequestsPage() {
     <ClientShell>
       <div className="mx-auto w-full max-w-3xl">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-          Demandes de pièces
+          {t('inbox.requests.title')}
         </h1>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Les documents demandés par vos professionnels. Déposez une pièce par ligne.
+          {t('inbox.requests.subtitle')}
         </p>
 
         {error ? (
           <div className="mt-8 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-            Impossible de charger les demandes.
+            {t('inbox.requests.loadError')}
             <span className="mt-1 block font-mono text-xs opacity-80">{error.message}</span>
           </div>
         ) : (requests?.length ?? 0) === 0 ? (
           <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-              Aucune demande pour le moment.
+              {t('inbox.requests.empty')}
             </p>
           </div>
         ) : (
@@ -134,7 +135,7 @@ export default async function RequestsPage() {
                     </h2>
                     {senderLabel(request.professional_name, request.professional_profession) && (
                       <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                        Demandé par{' '}
+                        {t('inbox.requests.requestedBy')}{' '}
                         <span className="font-medium text-slate-700 dark:text-slate-300">
                           {senderLabel(request.professional_name, request.professional_profession)}
                         </span>
@@ -143,7 +144,7 @@ export default async function RequestsPage() {
                   </header>
                   <ul className="divide-y divide-slate-200 dark:divide-slate-800">
                     {items.map((item) => {
-                      const badge = badgeFor(item.status)
+                      const badge = badgeFor(item.status, t)
                       const canSubmit = item.status === 'pending' || item.status === 'rejected'
                       const signedUrl = item.document_id
                         ? signedUrlByDocId.get(item.document_id)
@@ -155,8 +156,9 @@ export default async function RequestsPage() {
                               <p className="font-medium text-slate-800 dark:text-slate-200">{item.label}</p>
                               {item.due_date && (
                                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                                  À fournir avant le{' '}
-                                  {new Date(item.due_date).toLocaleDateString('fr-FR')}
+                                  {t('inbox.requests.dueBy', {
+                                    date: new Date(item.due_date).toLocaleDateString('fr-FR'),
+                                  })}
                                 </p>
                               )}
                             </div>
@@ -189,7 +191,7 @@ export default async function RequestsPage() {
                                   strokeLinejoin="round"
                                 />
                               </svg>
-                              Ouvrir le document déposé
+                              {t('inbox.requests.openDocument')}
                             </a>
                           )}
 

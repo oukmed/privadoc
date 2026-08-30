@@ -1,35 +1,59 @@
 import { CONTAINER, SectionHead, WarmBand } from '@/app/landing/ui'
+import { getT } from '@/lib/i18n/server'
 
 type Row = { criterion: string; privadoc: string; drive: string }
 
-const ROWS: Row[] = [
-  { criterion: 'Liste des pièces à fournir', privadoc: 'Intégrée', drive: '—' },
-  { criterion: "Suivi de l'avancement", privadoc: 'Tableau de bord', drive: 'Vérification manuelle' },
-  { criterion: 'Notifications de dépôt', privadoc: 'Automatiques', drive: 'Aucune' },
-  { criterion: 'Simplicité côté client', privadoc: 'Un lien, on dépose', drive: 'Compte + permissions' },
-  { criterion: 'Hébergement & confidentialité', privadoc: 'Europe · sans pub', drive: 'Hors UE possible' },
-]
+const ROW_KEYS = [
+  { criterion: 'landing.comparison.r1.criterion', privadoc: 'landing.comparison.r1.privadoc', drive: null },
+  {
+    criterion: 'landing.comparison.r2.criterion',
+    privadoc: 'landing.comparison.r2.privadoc',
+    drive: 'landing.comparison.r2.drive',
+  },
+  {
+    criterion: 'landing.comparison.r3.criterion',
+    privadoc: 'landing.comparison.r3.privadoc',
+    drive: 'landing.comparison.r3.drive',
+  },
+  {
+    criterion: 'landing.comparison.r4.criterion',
+    privadoc: 'landing.comparison.r4.privadoc',
+    drive: 'landing.comparison.r4.drive',
+  },
+  {
+    criterion: 'landing.comparison.r5.criterion',
+    privadoc: 'landing.comparison.r5.privadoc',
+    drive: 'landing.comparison.r5.drive',
+  },
+] as const
 
 /** Comparison, demoted to compact monochrome evidence: a real semantic table, 5 rows. */
-export function Comparison() {
+export async function Comparison() {
+  const t = await getT()
+  const rows: Row[] = ROW_KEYS.map(({ criterion, privadoc, drive }) => ({
+    criterion: t(criterion),
+    privadoc: t(privadoc),
+    drive: drive ? t(drive) : '—',
+  }))
+
   return (
     <WarmBand>
       <section id="comparatif" aria-labelledby="comparatif-heading" className={`${CONTAINER} py-20 sm:py-28`}>
         <SectionHead
           index="05"
-          eyebrow="Et par rapport à un simple Drive ?"
-          title="Un Drive stocke. PrivaDoc collecte."
+          eyebrow={t('landing.comparison.eyebrow')}
+          title={t('landing.comparison.title')}
           headingId="comparatif-heading"
-          subtitle="Google Drive est un excellent disque dur. Mais réclamer des pièces à des clients, ce n'est pas du stockage."
+          subtitle={t('landing.comparison.subtitle')}
         />
         <div
           role="region"
-          aria-label="Comparatif PrivaDoc et Google Drive"
+          aria-label={t('landing.comparison.regionAria')}
           tabIndex={0}
           className="mt-10 overflow-x-auto rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
         >
           <table className="w-full min-w-140 border-collapse text-left">
-            <caption className="sr-only">Comparaison PrivaDoc vs Google Drive</caption>
+            <caption className="sr-only">{t('landing.comparison.caption')}</caption>
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-800">
                 <th scope="col" className="px-5 py-3.5 text-sm font-semibold" />
@@ -45,10 +69,10 @@ export function Comparison() {
               </tr>
             </thead>
             <tbody>
-              {ROWS.map((row, index) => (
+              {rows.map((row, index) => (
                 <tr
                   key={row.criterion}
-                  className={index < ROWS.length - 1 ? 'border-b border-slate-200 dark:border-slate-800' : ''}
+                  className={index < rows.length - 1 ? 'border-b border-slate-200 dark:border-slate-800' : ''}
                 >
                   <th scope="row" className="w-[38%] px-5 py-3.5 font-medium text-slate-900 dark:text-white">
                     {row.criterion}
@@ -60,7 +84,7 @@ export function Comparison() {
                     {row.drive === '—' ? (
                       <>
                         <span aria-hidden="true">—</span>
-                        <span className="sr-only">Non</span>
+                        <span className="sr-only">{t('landing.comparison.no')}</span>
                       </>
                     ) : (
                       row.drive

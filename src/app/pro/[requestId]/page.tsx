@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { reviewItem } from '@/app/pro/actions'
+import { getT } from '@/lib/i18n/server'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 600 // 10 minutes
@@ -16,23 +17,11 @@ interface Item {
   position: number
 }
 
-const STATUS: Record<string, { label: string; className: string }> = {
-  pending: {
-    label: 'En attente',
-    className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-  },
-  submitted: {
-    label: 'Reçue',
-    className: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
-  },
-  validated: {
-    label: 'Validée',
-    className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
-  },
-  rejected: {
-    label: 'Refusée',
-    className: 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300',
-  },
+const STATUS_CLASS: Record<string, string> = {
+  pending: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  submitted: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
+  validated: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
+  rejected: 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300',
 }
 
 export default async function RequestDetailPage({
@@ -47,6 +36,8 @@ export default async function RequestDetailPage({
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const t = await getT()
 
   // RLS restricts this to the pro's own requests.
   const { data: request } = await supabase
@@ -81,9 +72,9 @@ export default async function RequestDetailPage({
 
   return (
     <div className="mx-auto w-full max-w-3xl">
-      <nav aria-label="Fil d'Ariane" className="flex flex-wrap items-center gap-1 text-sm">
+      <nav aria-label={t('pro.detail.breadcrumbAria')} className="flex flex-wrap items-center gap-1 text-sm">
           <Link href="/pro" className="font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400">
-            Espace pro
+            {t('nav.pro')}
           </Link>
           <span className="text-slate-300 dark:text-slate-600">/</span>
           <span className="text-slate-500 dark:text-slate-400">{request.client_email}</span>
@@ -93,12 +84,14 @@ export default async function RequestDetailPage({
           {request.title}
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Client : {request.client_email}
+          {t('pro.detail.clientLabel', { email: request.client_email })}
         </p>
 
         <ul className="mt-8 flex flex-col gap-4">
           {items.map((item) => {
-            const badge = STATUS[item.status] ?? STATUS.pending
+            const statusKey = STATUS_CLASS[item.status] ? item.status : 'pending'
+            const className = STATUS_CLASS[statusKey]
+            const label = t(`pro.detail.status.${statusKey}`)
             const signedUrl = item.document_id ? signedUrls.get(item.document_id) : undefined
             return (
               <li
@@ -110,19 +103,21 @@ export default async function RequestDetailPage({
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium text-slate-900 dark:text-slate-100">{item.label}</p>
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}
                       >
-                        {badge.label}
+                        {label}
                       </span>
                     </div>
                     {item.due_date && (
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        Échéance : {new Date(item.due_date).toLocaleDateString('fr-FR')}
+                        {t('pro.detail.dueDate', {
+                          date: new Date(item.due_date).toLocaleDateString('fr-FR'),
+                        })}
                       </p>
                     )}
                     {item.comment && (
                       <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                        Commentaire : {item.comment}
+                        {t('pro.detail.comment', { comment: item.comment })}
                       </p>
                     )}
                   </div>
@@ -133,7 +128,7 @@ export default async function RequestDetailPage({
                       rel="noopener noreferrer"
                       className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
-                      Ouvrir
+                      {t('pro.common.open')}
                     </a>
                   )}
                 </div>
@@ -145,7 +140,7 @@ export default async function RequestDetailPage({
                       name="comment"
                       rows={2}
                       defaultValue={item.comment ?? ''}
-                      placeholder="Commentaire (optionnel)"
+                      placeholder={t('pro.detail.commentPlaceholder')}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     />
                     <div className="flex gap-2">
@@ -155,7 +150,7 @@ export default async function RequestDetailPage({
                         value="validated"
                         className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
                       >
-                        Valider
+                        {t('pro.detail.validate')}
                       </button>
                       <button
                         type="submit"
@@ -163,13 +158,13 @@ export default async function RequestDetailPage({
                         value="rejected"
                         className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
                       >
-                        Refuser
+                        {t('pro.detail.reject')}
                       </button>
                     </div>
                   </form>
                 ) : (
                   <p className="mt-3 text-sm text-slate-400 dark:text-slate-500">
-                    En attente du dépôt par le client.
+                    {t('pro.detail.awaitingUpload')}
                   </p>
                 )}
               </li>

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/app/account/profile'
 import { getProRequests, requestProgress, clientLabel } from '@/app/pro/data'
 import { deleteRequest } from '@/app/pro/actions'
+import { getT } from '@/lib/i18n/server'
 import {
   PageHeader,
   Card,
@@ -17,10 +18,10 @@ import {
 // status, to track each dossier's progress. Composes the shared /pro primitives.
 
 const FILTERS = [
-  { key: 'open', label: 'En cours' },
-  { key: 'completed', label: 'Terminées' },
-  { key: 'archived', label: 'Archivées' },
-  { key: 'all', label: 'Toutes' },
+  { key: 'open', labelKey: 'pro.requests.filter.open' },
+  { key: 'completed', labelKey: 'pro.requests.filter.completed' },
+  { key: 'archived', labelKey: 'pro.requests.filter.archived' },
+  { key: 'all', labelKey: 'pro.requests.filter.all' },
 ] as const
 
 type FilterKey = (typeof FILTERS)[number]['key']
@@ -43,6 +44,7 @@ export default async function DemandesPage({
   const profile = await getProfile()
   if (!profile.isProfessional) redirect('/pro')
 
+  const t = await getT()
   const sp = await searchParams
   const raw = typeof sp.statut === 'string' ? sp.statut : ''
   const active: FilterKey = isFilterKey(raw) ? raw : 'open'
@@ -53,15 +55,15 @@ export default async function DemandesPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Demandes"
-        subtitle="Suivez l'avancement de chaque dossier."
+        title={t('pro.requests.title')}
+        subtitle={t('pro.requests.subtitle')}
         action={
-          <ButtonLink href="/pro/nouvelle-demande">Nouvelle demande</ButtonLink>
+          <ButtonLink href="/pro/nouvelle-demande">{t('pro.common.newRequest')}</ButtonLink>
         }
       />
 
       {/* Status filter — pill toggles that set ?statut= */}
-      <nav aria-label="Filtrer par statut" className="flex flex-wrap gap-1.5">
+      <nav aria-label={t('pro.requests.filterAria')} className="flex flex-wrap gap-1.5">
         {FILTERS.map((f) => {
           const isActive = f.key === active
           return (
@@ -75,7 +77,7 @@ export default async function DemandesPage({
                   : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
               }`}
             >
-              {f.label}
+              {t(f.labelKey)}
             </Link>
           )
         })}
@@ -84,15 +86,13 @@ export default async function DemandesPage({
       {filtered.length === 0 ? (
         <Card>
           <EmptyState
-            cta={<ButtonLink href="/pro/nouvelle-demande">Nouvelle demande</ButtonLink>}
+            cta={<ButtonLink href="/pro/nouvelle-demande">{t('pro.common.newRequest')}</ButtonLink>}
           >
-            {active === 'all'
-              ? "Aucune demande pour l'instant. Créez une demande de pièces pour un client."
-              : 'Aucune demande avec ce statut.'}
+            {active === 'all' ? t('pro.requests.emptyAll') : t('pro.requests.emptyFiltered')}
           </EmptyState>
         </Card>
       ) : (
-        <Card title="Demandes" count={filtered.length}>
+        <Card title={t('pro.requests.title')} count={filtered.length}>
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {filtered.map((request) => {
               const progress = requestProgress(request)
@@ -123,7 +123,7 @@ export default async function DemandesPage({
                         type="submit"
                         className="shrink-0 text-sm font-medium text-red-600 transition hover:text-red-500 dark:text-red-400"
                       >
-                        Supprimer
+                        {t('pro.common.delete')}
                       </button>
                     </form>
                   </div>
@@ -132,11 +132,14 @@ export default async function DemandesPage({
                     <ProgressBar value={progress.validated} total={progress.total} />
                     <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <span>
-                        {progress.validated}/{progress.total} validées
+                        {t('pro.requests.progressLabel', {
+                          validated: progress.validated,
+                          total: progress.total,
+                        })}
                       </span>
                       {progress.submitted > 0 && (
                         <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                          {progress.submitted} à valider
+                          {t('pro.common.toReviewCount', { count: progress.submitted })}
                         </span>
                       )}
                     </p>

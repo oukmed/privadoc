@@ -10,6 +10,7 @@ import { deleteSelection, renameDocument, getDownloadUrl } from '@/app/documents
 import { deleteFolder, renameFolder } from '@/app/folders/actions'
 import { removeCollaborator } from '@/app/collaborators/actions'
 import { CollabActionButton } from '@/app/collaborators/resend-button'
+import { useT } from '@/lib/i18n/client'
 
 interface FolderItem {
   id: string
@@ -104,6 +105,7 @@ export function DocumentList({
   allFolders,
   currentFolderId,
 }: DocumentListProps) {
+  const t = useT()
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set())
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set())
   const [shareTargets, setShareTargets] = useState<string[] | null>(null)
@@ -167,7 +169,7 @@ export function DocumentList({
       })
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null
-        setZipError(data?.error ?? 'Le téléchargement a échoué.')
+        setZipError(data?.error ?? t('vault.list.zipFailed'))
         return
       }
       const blob = await response.blob()
@@ -180,7 +182,7 @@ export function DocumentList({
       anchor.remove()
       URL.revokeObjectURL(url)
     } catch {
-      setZipError('Le téléchargement a échoué.')
+      setZipError(t('vault.list.zipFailed'))
     } finally {
       setZipping(false)
     }
@@ -202,7 +204,7 @@ export function DocumentList({
         anchor.remove()
         return
       }
-      setZipError(error ?? 'Téléchargement indisponible.')
+      setZipError(error ?? t('vault.list.downloadUnavailable'))
       return
     }
     void downloadZip()
@@ -223,7 +225,7 @@ export function DocumentList({
     }
     const { url, error } = await getDownloadUrl(doc.id)
     if (url) window.open(url, '_blank', 'noopener')
-    else alert(error ?? 'Document indisponible.')
+    else alert(error ?? t('vault.list.documentUnavailable'))
   }
 
   return (
@@ -232,7 +234,7 @@ export function DocumentList({
         <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           <div className="border-b border-slate-200 bg-slate-50 px-4 py-2.5 dark:border-slate-800 dark:bg-slate-950/40">
             <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Partagé avec moi
+              {t('vault.list.sharedWithMe')}
             </span>
           </div>
           <ul className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -263,7 +265,7 @@ export function DocumentList({
                     <span className="whitespace-nowrap">{formatDate(doc.createdAt)}</span>
                     {doc.received && (
                       <span className="ml-1.5 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                        Reçu
+                        {t('vault.list.received')}
                       </span>
                     )}
                   </p>
@@ -274,13 +276,13 @@ export function DocumentList({
                     onClick={() => openShared(doc)}
                     className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
                   >
-                    Ouvrir
+                    {t('vault.list.open')}
                   </button>
                   {doc.collaboratorId ? (
                     <CollabActionButton
                       action={removeCollaborator}
                       collaboratorId={doc.collaboratorId}
-                      label="Retirer"
+                      label={t('vault.list.remove')}
                       tone="red"
                     />
                   ) : (
@@ -289,7 +291,7 @@ export function DocumentList({
                       onClick={() => hideShared(doc.id)}
                       className="text-sm font-medium text-red-600 transition hover:text-red-500 dark:text-red-400"
                     >
-                      Retirer
+                      {t('vault.list.remove')}
                     </button>
                   )}
                 </div>
@@ -308,11 +310,15 @@ export function DocumentList({
               if (el) el.indeterminate = selectedCount > 0 && !allSelected
             }}
             onChange={toggleAll}
-            aria-label="Tout sélectionner"
+            aria-label={t('vault.list.selectAll')}
             className={rowCheckboxClass}
           />
           <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-            {selectedCount > 0 ? `${selectedCount} sélectionné(s)` : 'Tout sélectionner'}
+            {selectedCount > 0
+              ? t(selectedCount > 1 ? 'vault.list.selected.other' : 'vault.list.selected.one', {
+                  count: selectedCount,
+                })
+              : t('vault.list.selectAll')}
           </span>
         </div>
 
@@ -327,7 +333,7 @@ export function DocumentList({
                   type="checkbox"
                   checked={selectedFolders.has(folder.id)}
                   onChange={() => setSelectedFolders((prev) => toggleInSet(prev, folder.id))}
-                  aria-label={`Sélectionner le dossier ${folder.name}`}
+                  aria-label={t('vault.list.selectFolder', { name: folder.name })}
                   className={rowCheckboxClass}
                 />
                 <Link
@@ -341,12 +347,12 @@ export function DocumentList({
                 </Link>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 self-stretch sm:shrink-0 sm:gap-4 sm:self-auto">
-                <RenameDialog action={renameFolder} id={folder.id} currentName={folder.name} noun="dossier" />
+                <RenameDialog action={renameFolder} id={folder.id} currentName={folder.name} noun="folder" />
                 <ConfirmDialog
-                  triggerLabel="Supprimer"
-                  title="Supprimer le dossier"
-                  description="Le dossier et ses sous-dossiers seront supprimés. Les documents qu'il contient ne seront pas supprimés mais déplacés à la racine."
-                  confirmLabel="Supprimer"
+                  triggerLabel={t('vault.list.delete')}
+                  title={t('vault.list.deleteFolderTitle')}
+                  description={t('vault.list.deleteFolderDescription')}
+                  confirmLabel={t('vault.list.delete')}
                   action={deleteFolder}
                   hiddenFields={{ id: folder.id }}
                   destructive
@@ -365,7 +371,7 @@ export function DocumentList({
                   type="checkbox"
                   checked={selectedDocs.has(doc.id)}
                   onChange={() => setSelectedDocs((prev) => toggleInSet(prev, doc.id))}
-                  aria-label={`Sélectionner le document ${doc.title}`}
+                  aria-label={t('vault.list.selectDocument', { title: doc.title })}
                   className={rowCheckboxClass}
                 />
                 <FileBadge title={doc.title} />
@@ -390,7 +396,7 @@ export function DocumentList({
                     <span className="whitespace-nowrap">{formatDate(doc.createdAt)}</span>
                     {doc.received && (
                       <span className="ml-1.5 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                        Reçu
+                        {t('vault.list.received')}
                       </span>
                     )}
                   </p>
@@ -402,7 +408,7 @@ export function DocumentList({
                   onClick={() => setShareTargets([doc.id])}
                   className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
                 >
-                  Partager
+                  {t('vault.list.share')}
                 </button>
                 {(allFolders?.length ?? 0) > 0 && (
                   <MoveDialog
@@ -428,7 +434,7 @@ export function DocumentList({
               <button
                 type="button"
                 onClick={clearSelection}
-                aria-label="Annuler la sélection"
+                aria-label={t('vault.list.clearSelection')}
                 className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
               >
                 <svg viewBox="0 0 24 24" fill="none" className="size-5" aria-hidden="true">
@@ -436,7 +442,9 @@ export function DocumentList({
                 </svg>
               </button>
               <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                {selectedCount} sélectionné(s)
+                {t(selectedCount > 1 ? 'vault.list.selected.other' : 'vault.list.selected.one', {
+                  count: selectedCount,
+                })}
               </span>
             </div>
 
@@ -447,7 +455,7 @@ export function DocumentList({
                 disabled={selectedDocs.size === 0}
                 className="rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Partager
+                {t('vault.list.share')}
               </button>
               <button
                 type="button"
@@ -456,17 +464,17 @@ export function DocumentList({
                 className="rounded-xl border border-slate-300 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 {zipping
-                  ? 'Préparation…'
+                  ? t('vault.list.preparing')
                   : selectedDocs.size === 1 && selectedFolders.size === 0
-                    ? 'Télécharger'
-                    : 'Télécharger (ZIP)'}
+                    ? t('vault.list.download')
+                    : t('vault.list.downloadZip')}
               </button>
               <button
                 type="button"
                 onClick={() => setBulkConfirm(true)}
                 className="rounded-xl border border-red-200 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
               >
-                Supprimer
+                {t('vault.list.delete')}
               </button>
             </div>
           </div>
@@ -501,10 +509,12 @@ export function DocumentList({
             className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
           >
             <h2 id="bulk-delete-title" className="text-base font-semibold text-slate-900 dark:text-slate-50">
-              Supprimer la sélection
+              {t('vault.list.bulkTitle')}
             </h2>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              {selectedCount} élément(s) seront supprimés. Cette action est définitive pour les documents.
+              {t(selectedCount > 1 ? 'vault.list.bulkBody.other' : 'vault.list.bulkBody.one', {
+                count: selectedCount,
+              })}
             </p>
             <form action={handleBulkDelete} className="mt-6 flex justify-end gap-3">
               {[...selectedDocs].map((id) => (
@@ -518,13 +528,13 @@ export function DocumentList({
                 onClick={() => setBulkConfirm(false)}
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                Annuler
+                {t('vault.cancel')}
               </button>
               <button
                 type="submit"
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500"
               >
-                Supprimer
+                {t('vault.list.delete')}
               </button>
             </form>
           </div>

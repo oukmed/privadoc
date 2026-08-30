@@ -2,17 +2,19 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useT } from '@/lib/i18n/client'
 
 const SORT_OPTIONS = [
-  { value: 'recent', label: 'Plus récent' },
-  { value: 'old', label: 'Plus ancien' },
-  { value: 'az', label: 'Nom A–Z' },
-  { value: 'za', label: 'Nom Z–A' },
+  { value: 'recent', labelKey: 'vault.sort.recent' },
+  { value: 'old', labelKey: 'vault.sort.old' },
+  { value: 'az', labelKey: 'vault.sort.az' },
+  { value: 'za', labelKey: 'vault.sort.za' },
 ] as const
 
 const DEBOUNCE_MS = 250
 
 export function SearchSort() {
+  const t = useT()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -46,7 +48,7 @@ export function SearchSort() {
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <div className="relative flex-1">
         <label htmlFor="document-search" className="sr-only">
-          Rechercher un document
+          {t('vault.search.label')}
         </label>
         <svg
           aria-hidden="true"
@@ -62,14 +64,14 @@ export function SearchSort() {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Rechercher un document…"
+          placeholder={t('vault.search.placeholder')}
           className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-9 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 [&::-webkit-search-cancel-button]:hidden"
         />
         {query && (
           <button
             type="button"
             onClick={() => setQuery('')}
-            aria-label="Effacer la recherche"
+            aria-label={t('vault.search.clear')}
             className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
           >
             <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="size-4">
@@ -86,7 +88,7 @@ export function SearchSort() {
 
       <div>
         <label htmlFor="document-sort" className="sr-only">
-          Trier les documents
+          {t('vault.sort.label')}
         </label>
         <select
           id="document-sort"
@@ -96,7 +98,7 @@ export function SearchSort() {
         >
           {SORT_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
-              {option.label}
+              {t(option.labelKey)}
             </option>
           ))}
         </select>

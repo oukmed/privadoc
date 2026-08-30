@@ -7,6 +7,7 @@ import { CollabActionButton } from '@/app/collaborators/resend-button'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 import { resolveDisplayNames } from '@/lib/names'
 import { getProfile } from '@/app/account/profile'
+import { getT } from '@/lib/i18n/server'
 
 interface AccessRow {
   id: string
@@ -18,13 +19,15 @@ interface AccessRow {
   folders: { name: string } | null
 }
 
+type Translate = (key: string, vars?: Record<string, string | number>) => string
+
 function roleLabel(role: string): string {
   return ROLE_LABELS[role as RecipientRole] ?? ROLE_LABELS.autre
 }
 
-function expiryHint(expiresAt: string | null): string | null {
+function expiryHint(expiresAt: string | null, t: Translate): string | null {
   if (!expiresAt) return null
-  return `expire le ${new Date(expiresAt).toLocaleDateString('fr-FR')}`
+  return t('inbox.collab.expiresOn', { date: new Date(expiresAt).toLocaleDateString('fr-FR') })
 }
 
 export default async function CollaboratorsPage() {
@@ -38,6 +41,8 @@ export default async function CollaboratorsPage() {
   // on /pro and never share personal folders, so they never land here.
   const { displayName, isProfessional, proStatus } = await getProfile()
   if (isProfessional || proStatus === 'pending') redirect('/pro')
+
+  const t = await getT()
 
   const [{ data: collaborators }, { data: access }, { data: documents }, { data: folders }] =
     await Promise.all([
@@ -73,7 +78,7 @@ export default async function CollaboratorsPage() {
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            Collaborateurs
+            {t('inbox.collab.title')}
           </h1>
           <InviteDialog
             documents={(documents ?? []).map((d) => ({ id: d.id, title: d.title }))}
@@ -83,14 +88,13 @@ export default async function CollaboratorsPage() {
         </div>
 
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Accorde un accès permanent en lecture seule à un tiers (avocat, comptable, banque…) sur
-          les documents et dossiers de ton choix.
+          {t('inbox.collab.subtitle')}
         </p>
 
         {rows.length === 0 ? (
           <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-              Aucun collaborateur pour l&apos;instant.
+              {t('inbox.collab.empty')}
             </p>
           </div>
         ) : (
@@ -111,14 +115,16 @@ export default async function CollaboratorsPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate font-medium text-slate-900 dark:text-slate-100">
-                          {isReceived ? name || 'Partagé avec vous' : name || collaborator.email}
+                          {isReceived
+                            ? name || t('inbox.collab.sharedWithYou')
+                            : name || collaborator.email}
                         </p>
                         <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
                           {roleLabel(collaborator.role)}
                         </span>
                         {isReceived ? (
                           <span className="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">
-                            Partagé avec vous
+                            {t('inbox.collab.sharedWithYou')}
                           </span>
                         ) : (
                           <span
@@ -128,7 +134,9 @@ export default async function CollaboratorsPage() {
                                 : 'inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                             }
                           >
-                            {collaborator.accepted_at ? 'Actif' : 'Invité'}
+                            {collaborator.accepted_at
+                              ? t('inbox.collab.active')
+                              : t('inbox.collab.invited')}
                           </span>
                         )}
                       </div>
@@ -143,14 +151,14 @@ export default async function CollaboratorsPage() {
                         <CollabActionButton
                           action={resendInvite}
                           collaboratorId={collaborator.id}
-                          label="Relancer"
+                          label={t('inbox.collab.resend')}
                           tone="indigo"
                         />
                       )}
                       <CollabActionButton
                         action={removeCollaborator}
                         collaboratorId={collaborator.id}
-                        label={isReceived ? 'Quitter' : 'Retirer'}
+                        label={isReceived ? t('inbox.collab.leave') : t('inbox.collab.remove')}
                         tone="red"
                       />
                     </div>
@@ -159,8 +167,9 @@ export default async function CollaboratorsPage() {
                   {grants.length > 0 && (
                     <ul className="mt-4 flex flex-wrap gap-2">
                       {grants.map((grant) => {
-                        const label = grant.folders?.name ?? grant.documents?.title ?? 'Élément supprimé'
-                        const hint = expiryHint(grant.expires_at)
+                        const label =
+                          grant.folders?.name ?? grant.documents?.title ?? t('inbox.collab.deletedItem')
+                        const hint = expiryHint(grant.expires_at, t)
                         return (
                           <li
                             key={grant.id}
@@ -177,7 +186,7 @@ export default async function CollaboratorsPage() {
                                 <input type="hidden" name="accessId" value={grant.id} />
                                 <button
                                   type="submit"
-                                  aria-label={`Révoquer l'accès à ${label}`}
+                                  aria-label={t('inbox.collab.revokeAccessTo', { label })}
                                   className="rounded p-0.5 text-slate-400 transition hover:text-red-600 dark:hover:text-red-400"
                                 >
                                   <svg

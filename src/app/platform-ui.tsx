@@ -1,5 +1,8 @@
+'use client'
+
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { useT } from '@/lib/i18n/client'
 
 // Shared presentational primitives for the authenticated platform (both the
 // professional space and the private client space). Composing these keeps every
@@ -98,25 +101,29 @@ export function Card({
   )
 }
 
-const ITEM_STATUS: Record<string, { label: string; className: string }> = {
-  pending: { label: 'En attente', className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
-  submitted: { label: 'À valider', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300' },
-  validated: { label: 'Validée', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' },
-  rejected: { label: 'À refaire', className: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300' },
+const ITEM_STATUS_CLASS: Record<string, string> = {
+  pending: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  submitted: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
+  validated: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
+  rejected: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300',
 }
-const REQUEST_STATUS: Record<string, { label: string; className: string }> = {
-  open: { label: 'En cours', className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300' },
-  completed: { label: 'Terminée', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' },
-  archived: { label: 'Archivée', className: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' },
+const REQUEST_STATUS_CLASS: Record<string, string> = {
+  open: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300',
+  completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
+  archived: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
 }
+const FALLBACK_CLASS = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
 
-/** Status pill. `kind` picks the request vs. piece vocabulary. */
+/** Status pill. `kind` picks the request vs. piece vocabulary. Client component
+ * (uses useT) so it can be rendered from server components across the platform. */
 export function StatusBadge({ status, kind = 'item' }: { status: string; kind?: 'item' | 'request' }) {
-  const map = kind === 'request' ? REQUEST_STATUS : ITEM_STATUS
-  const badge = map[status] ?? { label: status, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
+  const t = useT()
+  const classMap = kind === 'request' ? REQUEST_STATUS_CLASS : ITEM_STATUS_CLASS
+  const className = classMap[status] ?? FALLBACK_CLASS
+  const label = classMap[status] ? t(`pro.status.${kind}.${status}`) : status
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>
-      {badge.label}
+    <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}>
+      {label}
     </span>
   )
 }

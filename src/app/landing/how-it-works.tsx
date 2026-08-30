@@ -1,24 +1,17 @@
 import { CONTAINER, SectionHead } from '@/app/landing/ui'
+import { getT } from '@/lib/i18n/server'
 
-type Step = { title: string; body: string }
-
-const STEPS: Step[] = [
-  {
-    title: 'Vous listez ce dont vous avez besoin',
-    body: "Créez une demande et cochez les pièces attendues — pièce d'identité, avis d'imposition, RIB… Une seule fois, pour tout le dossier.",
-  },
-  {
-    title: 'Votre client dépose en un lien',
-    body: 'Il reçoit un lien unique. Aucun compte à créer, aucun mot de passe. Il voit ce qui reste à fournir et dépose depuis son téléphone ou son ordinateur.',
-  },
-  {
-    title: 'Vous êtes prévenu, tout est classé',
-    body: 'À chaque dépôt, une notification. Chaque pièce arrive au bon endroit, nommée et rangée. Vous suivez l’avancement de tous vos dossiers depuis un tableau de bord.',
-  },
-]
+const STEP_KEYS = [
+  { title: 'landing.how.step1.title', body: 'landing.how.step1.body' },
+  { title: 'landing.how.step2.title', body: 'landing.how.step2.body' },
+  { title: 'landing.how.step3.title', body: 'landing.how.step3.body' },
+] as const
 
 /** How it works: a numbered vertical editorial list joined by a hairline — not cards. */
-export function HowItWorks() {
+export async function HowItWorks() {
+  const t = await getT()
+  const steps = STEP_KEYS.map(({ title, body }) => ({ title: t(title), body: t(body) }))
+
   return (
     <section
       id="fonctionnement"
@@ -27,12 +20,12 @@ export function HowItWorks() {
     >
       <SectionHead
         index="02"
-        eyebrow="Comment ça marche"
-        title="Trois étapes. Ensuite, vous n'y pensez plus."
+        eyebrow={t('landing.how.eyebrow')}
+        title={t('landing.how.title')}
         headingId="fonctionnement-heading"
       />
       <ol className="relative mt-14 before:absolute before:top-10 before:bottom-10 before:left-6 before:w-px before:bg-linear-to-b before:from-indigo-300 before:to-slate-200 sm:before:left-7 dark:before:from-indigo-800 dark:before:to-slate-800">
-        {STEPS.map((step, index) => (
+        {steps.map((step, index) => (
           <li key={step.title} className="grid grid-cols-[auto_1fr] items-start gap-5 sm:gap-8">
             <span className="relative z-10 grid size-12 place-items-center rounded-full bg-indigo-50 font-serif text-2xl text-indigo-600 tabular-nums ring-1 ring-indigo-100 sm:size-14 sm:text-3xl dark:bg-indigo-950/60 dark:text-indigo-300 dark:ring-indigo-900">
               {index + 1}

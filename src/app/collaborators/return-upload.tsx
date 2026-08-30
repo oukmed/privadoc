@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react'
 import { uploadForOwner, type CollaboratorState } from '@/app/collaborators/actions'
+import { useT } from '@/lib/i18n/client'
 
 export interface ReturnTarget {
   ownerId: string
@@ -10,6 +11,7 @@ export interface ReturnTarget {
 }
 
 function OwnerReturnCard({ target, label }: { target: ReturnTarget; label: string }) {
+  const t = useT()
   const [state, action, pending] = useActionState<CollaboratorState, FormData>(
     uploadForOwner,
     undefined,
@@ -37,10 +39,10 @@ function OwnerReturnCard({ target, label }: { target: ReturnTarget; label: strin
         <select
           name="folderId"
           defaultValue=""
-          aria-label="Dossier de destination"
+          aria-label={t('inbox.return.destFolder')}
           className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
         >
-          <option value="">Boîte de réception</option>
+          <option value="">{t('inbox.return.inbox')}</option>
           {target.folders.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
@@ -61,7 +63,7 @@ function OwnerReturnCard({ target, label }: { target: ReturnTarget; label: strin
         disabled={pending}
         className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {pending ? 'Envoi…' : 'Envoyer'}
+        {pending ? t('inbox.return.sending') : t('inbox.return.send')}
       </button>
 
       {state?.error && (
@@ -79,18 +81,23 @@ function OwnerReturnCard({ target, label }: { target: ReturnTarget; label: strin
 }
 
 export function ReturnUpload({ targets }: { targets: ReturnTarget[] }) {
+  const t = useT()
   if (targets.length === 0) return null
   return (
     <section className="mt-8">
       <h2 className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        Envoyer un document au propriétaire
+        {t('inbox.return.sectionTitle')}
       </h2>
       <div className="mt-3 flex flex-col gap-3">
         {targets.map((target, i) => (
           <OwnerReturnCard
             key={target.ownerId}
             target={target}
-            label={targets.length > 1 ? `Propriétaire ${i + 1}` : 'Document à envoyer'}
+            label={
+              targets.length > 1
+                ? t('inbox.return.ownerN', { n: i + 1 })
+                : t('inbox.return.docToSend')
+            }
           />
         ))}
       </div>

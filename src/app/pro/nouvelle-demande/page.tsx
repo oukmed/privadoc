@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/app/account/profile'
+import { getT } from '@/lib/i18n/server'
 import { Card, PageHeader } from '@/app/pro/ui'
 import { NewRequestForm } from '@/app/pro/nouvelle-demande/new-request-form'
 
@@ -14,11 +15,13 @@ export default async function NouvelleDemandePage() {
   const profile = await getProfile()
   if (!profile.isProfessional) redirect('/pro')
 
+  const t = await getT()
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Nouvelle demande"
-        subtitle="Demandez des pièces à un client — il recevra un email et une notification."
+        title={t('pro.common.newRequest')}
+        subtitle={t('pro.newRequestPage.subtitle')}
       />
       <Card>
         <NewRequestForm />

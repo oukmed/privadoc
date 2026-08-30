@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { createRequest, type RequestState } from '@/app/pro/actions'
+import { useT } from '@/lib/i18n/client'
 import { ButtonLink } from '@/app/pro/ui'
 
 const inputClass =
@@ -15,6 +16,7 @@ function newRowId(): number {
 }
 
 export function NewRequestForm() {
+  const t = useT()
   const [state, action, pending] = useActionState<RequestState, FormData>(createRequest, undefined)
   const [rows, setRows] = useState<number[]>([newRowId()])
 
@@ -23,7 +25,7 @@ export function NewRequestForm() {
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="request-client-name" className={labelClass}>
-            Nom du client
+            {t('pro.form.clientName')}
           </label>
           <input
             id="request-client-name"
@@ -31,21 +33,21 @@ export function NewRequestForm() {
             type="text"
             required
             maxLength={120}
-            placeholder="Ex. Lina Bernard"
+            placeholder={t('pro.form.clientNamePlaceholder')}
             className={`mt-1.5 ${inputClass}`}
           />
         </div>
 
         <div>
           <label htmlFor="request-client" className={labelClass}>
-            Adresse email du client
+            {t('pro.form.clientEmail')}
           </label>
           <input
             id="request-client"
             name="clientEmail"
             type="email"
             required
-            placeholder="client@exemple.fr"
+            placeholder={t('pro.form.clientEmailPlaceholder')}
             className={`mt-1.5 ${inputClass}`}
           />
         </div>
@@ -53,7 +55,7 @@ export function NewRequestForm() {
 
       <div>
         <label htmlFor="request-title" className={labelClass}>
-          Titre de la demande
+          {t('pro.form.title')}
         </label>
         <input
           id="request-title"
@@ -61,15 +63,15 @@ export function NewRequestForm() {
           type="text"
           required
           maxLength={200}
-          placeholder="Dossier de prêt immobilier"
+          placeholder={t('pro.form.titlePlaceholder')}
           className={`mt-1.5 ${inputClass}`}
         />
       </div>
 
       <fieldset>
-        <legend className={labelClass}>Pièces à fournir</legend>
+        <legend className={labelClass}>{t('pro.form.itemsLegend')}</legend>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Le client déposera un document pour chaque pièce listée ci-dessous.
+          {t('pro.form.itemsHint')}
         </p>
         <div className="mt-3 flex flex-col gap-3">
           {rows.map((rowId, index) => (
@@ -79,14 +81,14 @@ export function NewRequestForm() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Pièce {index + 1}
+                  {t('pro.form.itemLabel', { index: index + 1 })}
                 </span>
                 <button
                   type="button"
                   onClick={() =>
                     setRows((prev) => (prev.length > 1 ? prev.filter((r) => r !== rowId) : prev))
                   }
-                  aria-label="Retirer cette pièce"
+                  aria-label={t('pro.form.removeItem')}
                   className="rounded p-1 text-slate-400 transition hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 dark:hover:text-red-400"
                   disabled={rows.length <= 1}
                 >
@@ -103,19 +105,20 @@ export function NewRequestForm() {
               <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_auto]">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
-                    Nom de la pièce
+                    {t('pro.form.itemNameLabel')}
                   </label>
                   <input
                     name="label"
                     type="text"
                     required
-                    placeholder="Ex. Dernier avis d'imposition"
+                    placeholder={t('pro.form.itemNamePlaceholder')}
                     className={`mt-1 ${inputClass}`}
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
-                    Échéance <span className="font-normal text-slate-400">(facultatif)</span>
+                    {t('pro.form.dueDateLabel')}{' '}
+                    <span className="font-normal text-slate-400">{t('pro.form.optional')}</span>
                   </label>
                   <input name="dueDate" type="date" className={`mt-1 ${inputClass}`} />
                 </div>
@@ -128,7 +131,7 @@ export function NewRequestForm() {
           onClick={() => setRows((prev) => [...prev, newRowId()])}
           className="mt-3 inline-flex items-center gap-1 rounded text-sm font-medium text-indigo-600 transition hover:text-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400"
         >
-          + Ajouter une pièce
+          {t('pro.form.addItem')}
         </button>
       </fieldset>
 
@@ -146,7 +149,7 @@ export function NewRequestForm() {
             {state.message}
           </p>
           <ButtonLink href="/pro/demandes" size="sm">
-            Voir mes demandes
+            {t('pro.form.viewRequests')}
           </ButtonLink>
         </div>
       )}
@@ -157,7 +160,7 @@ export function NewRequestForm() {
           disabled={pending}
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-900"
         >
-          {pending ? 'Création…' : 'Créer la demande'}
+          {pending ? t('pro.form.submitPending') : t('pro.form.submit')}
         </button>
       </div>
     </form>

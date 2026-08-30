@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { submitPiece } from '@/app/requests/actions'
 import { safeContentType, fileExtension } from '@/app/documents/upload-client'
 import { ScanButton } from '@/app/scan-button'
+import { useT } from '@/lib/i18n/client'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const MAX_FILE_BYTES = 20 * 1024 * 1024 // 20 MB
@@ -15,6 +16,7 @@ interface SubmitPieceProps {
 }
 
 export function SubmitPiece({ item }: SubmitPieceProps) {
+  const t = useT()
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
   const [pending, setPending] = useState(false)
@@ -37,7 +39,7 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
     const input = formRef.current?.elements.namedItem('file') as HTMLInputElement | null
     const file = input?.files?.[0]
     if (!file) {
-      setError('Choisis un fichier à déposer.')
+      setError(t('inbox.submit.chooseFile'))
       return
     }
 
@@ -49,17 +51,15 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
       try {
         bytes = await file.arrayBuffer()
       } catch {
-        setError('Fichier illisible. Réessaie, ou utilise « Scanner ».')
+        setError(t('inbox.submit.unreadable'))
         return
       }
       if (bytes.byteLength === 0) {
-        setError(
-          'Fichier vide. Depuis Google Drive, ouvre-le une fois pour le rendre disponible hors connexion, ou utilise « Scanner ».',
-        )
+        setError(t('inbox.submit.empty'))
         return
       }
       if (bytes.byteLength > MAX_FILE_BYTES) {
-        setError('Fichier trop volumineux (max 20 Mo).')
+        setError(t('inbox.submit.tooLarge'))
         return
       }
 
@@ -68,7 +68,7 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) {
-        setError('Session expirée, reconnecte-toi.')
+        setError(t('inbox.submit.sessionExpired'))
         return
       }
 
@@ -80,7 +80,7 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
         .from(BUCKET)
         .upload(path, blob, { contentType, upsert: false })
       if (uploadError) {
-        setError('Le téléversement a échoué : ' + uploadError.message)
+        setError(t('inbox.submit.uploadFailed', { message: uploadError.message }))
         return
       }
 
@@ -97,10 +97,10 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
       }
 
       formRef.current?.reset()
-      setMessage('Pièce déposée.')
+      setMessage(t('inbox.submit.deposited'))
       router.refresh()
     } catch {
-      setError('Le dépôt a échoué. Réessaie.')
+      setError(t('inbox.submit.failed'))
     } finally {
       setPending(false)
     }
@@ -109,7 +109,7 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
       <label htmlFor={`file-${item.id}`} className="sr-only">
-        Fichier pour {item.label}
+        {t('inbox.submit.fileFor', { label: item.label })}
       </label>
       <input
         id={`file-${item.id}`}
@@ -130,7 +130,7 @@ export function SubmitPiece({ item }: SubmitPieceProps) {
             <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
           </svg>
         )}
-        {pending ? 'Dépôt…' : 'Déposer'}
+        {pending ? t('inbox.submit.depositing') : t('inbox.submit.deposit')}
       </button>
 
       {error && (

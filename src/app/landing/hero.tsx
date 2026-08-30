@@ -1,55 +1,64 @@
 import Link from 'next/link'
 import { ArrowIcon, BTN_PRIMARY, BTN_SECONDARY, CheckIcon, CONTAINER, Eyebrow } from '@/app/landing/ui'
+import { getT } from '@/lib/i18n/server'
 
 type Item = { label: string; received: boolean }
-const CHECKLIST: Item[] = [
-  { label: "Pièce d'identité", received: true },
-  { label: "Dernier avis d'imposition", received: true },
-  { label: 'Justificatif de domicile', received: false },
-  { label: 'RIB', received: false },
-]
+
+const CHECKLIST_KEYS = [
+  { key: 'landing.hero.card.doc.id', received: true },
+  { key: 'landing.hero.card.doc.taxNotice', received: true },
+  { key: 'landing.hero.card.doc.proofAddress', received: false },
+  { key: 'landing.hero.card.doc.bankDetails', received: false },
+] as const
 
 /** Hero: asymmetric, left-weighted. Copy on the left, one authentic product card on the right. */
-export function Hero() {
+export async function Hero() {
+  const t = await getT()
+  const checklist: Item[] = CHECKLIST_KEYS.map(({ key, received }) => ({ label: t(key), received }))
+
   return (
     <section aria-labelledby="hero-heading" className={`${CONTAINER} pt-16 pb-24 sm:pt-24`}>
       <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16">
         <div>
-          <Eyebrow>Pour les avocats, notaires et experts-comptables</Eyebrow>
+          <Eyebrow>{t('landing.hero.eyebrow')}</Eyebrow>
           <h1
             id="hero-heading"
             className="mt-5 font-serif text-4xl font-semibold leading-[1.02] tracking-tight text-balance text-slate-900 sm:text-6xl lg:text-[4.25rem] dark:text-white"
           >
-            Récupérez chaque pièce du dossier.{' '}
-            <span className="text-indigo-600 dark:text-indigo-400">Sans courir après personne.</span>
+            {t('landing.hero.titleLead')}{' '}
+            <span className="text-indigo-600 dark:text-indigo-400">{t('landing.hero.titleAccent')}</span>
           </h1>
           <p className="mt-6 max-w-xl text-lg text-slate-600 dark:text-slate-300">
-            PrivaDoc dresse la liste des documents à fournir, votre client les dépose via un seul
-            lien, et vous êtes prévenu à chaque réception. Vous suivez l&apos;avancement de chaque
-            dossier d&apos;un coup d&apos;œil.
+            {t('landing.hero.subtitle')}
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link href="/signup" className={BTN_PRIMARY}>
-              Créer un compte gratuit
+              {t('landing.cta.createFree')}
               <ArrowIcon />
             </Link>
             <Link href="/login" className={BTN_SECONDARY}>
-              Se connecter
+              {t('landing.nav.login')}
             </Link>
             <Link
               href="#fonctionnement"
               className="text-sm font-medium text-slate-600 underline-offset-4 hover:underline dark:text-slate-300"
             >
-              Voir comment ça marche
+              {t('landing.hero.seeHow')}
             </Link>
           </div>
           <p className="mt-5 text-sm text-slate-500 dark:text-slate-400">
-            Gratuit pour démarrer · Sans carte bancaire · Hébergé en Europe
+            {t('landing.hero.reassurance')}
           </p>
         </div>
 
         <div className="lg:-mb-24" aria-hidden="true">
-          <ProductCard />
+          <ProductCard
+            badge={t('landing.hero.card.badge')}
+            checklist={checklist}
+            receivedLabel={t('landing.hero.card.received')}
+            pendingLabel={t('landing.hero.card.pending')}
+            progressLabel={t('landing.hero.card.progress')}
+          />
         </div>
       </div>
     </section>
@@ -57,7 +66,19 @@ export function Hero() {
 }
 
 /** The authentic "Demande de pièces" checklist + progress card (real product visual). */
-function ProductCard() {
+function ProductCard({
+  badge,
+  checklist,
+  receivedLabel,
+  pendingLabel,
+  progressLabel,
+}: {
+  badge: string
+  checklist: Item[]
+  receivedLabel: string
+  pendingLabel: string
+  progressLabel: string
+}) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-md lg:-rotate-1 dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center gap-3">
@@ -80,12 +101,12 @@ function ProductCard() {
         </span>
         <span className="text-sm font-semibold text-slate-900 dark:text-white">PrivaDoc</span>
         <span className="ml-auto rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300">
-          Demande de pièces
+          {badge}
         </span>
       </div>
 
       <ul className="mt-5 grid gap-2">
-        {CHECKLIST.map((item, index) => (
+        {checklist.map((item, index) => (
           <li
             key={item.label}
             className="flex items-center gap-3 text-sm motion-safe:animate-[landing-pop_0.5s_ease-out_backwards]"
@@ -103,11 +124,11 @@ function ProductCard() {
             </span>
             {item.received ? (
               <span className="ml-auto rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
-                Reçu
+                {receivedLabel}
               </span>
             ) : (
               <span className="ml-auto rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
-                En attente
+                {pendingLabel}
               </span>
             )}
           </li>
@@ -119,7 +140,7 @@ function ProductCard() {
           <div className="h-1.5 w-1/2 origin-left rounded-full bg-indigo-600 motion-safe:animate-[landing-grow_0.9s_cubic-bezier(0.16,1,0.3,1)_0.3s_backwards] dark:bg-indigo-400" />
         </div>
         <div className="mt-2 flex justify-between text-xs text-slate-500 dark:text-slate-400">
-          <span>2 pièces sur 4 reçues</span>
+          <span>{progressLabel}</span>
           <span>50 %</span>
         </div>
       </div>

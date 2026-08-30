@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppHeader } from '@/app/app-header'
 import { markAllNotificationsRead, markNotificationRead } from '@/app/notifications/actions'
+import { getT } from '@/lib/i18n/server'
 
 export default async function NotificationsPage() {
   const supabase = await createClient()
@@ -9,6 +10,8 @@ export default async function NotificationsPage() {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const t = await getT()
 
   const { data: notifications } = await supabase
     .from('notifications')
@@ -25,7 +28,7 @@ export default async function NotificationsPage() {
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            Notifications
+            {t('inbox.notifications.title')}
           </h1>
           {hasUnread && (
             <form action={markAllNotificationsRead}>
@@ -33,7 +36,7 @@ export default async function NotificationsPage() {
                 type="submit"
                 className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                Tout marquer comme lu
+                {t('inbox.notifications.markAllRead')}
               </button>
             </form>
           )}
@@ -42,7 +45,7 @@ export default async function NotificationsPage() {
         {(notifications?.length ?? 0) === 0 ? (
           <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-              Aucune notification.
+              {t('inbox.notifications.empty')}
             </p>
           </div>
         ) : (
@@ -66,7 +69,7 @@ export default async function NotificationsPage() {
                       type="submit"
                       className="shrink-0 text-sm font-medium text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400"
                     >
-                      Marquer comme lu
+                      {t('inbox.notifications.markRead')}
                     </button>
                   </form>
                 )}

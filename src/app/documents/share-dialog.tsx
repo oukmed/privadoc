@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { createShareLink, sendShareEmail, type ShareState } from '@/app/documents/share-actions'
+import { useT } from '@/lib/i18n/client'
 
 interface ShareDialogProps {
   documentIds: string[]
@@ -14,17 +15,13 @@ interface ShareDialogProps {
 type Tab = 'link' | 'email'
 
 const RECIPIENT_ROLES = [
-  { value: 'avocat', label: 'Avocat' },
-  { value: 'comptable', label: 'Comptable' },
-  { value: 'banque', label: 'Banque' },
-  { value: 'notaire', label: 'Notaire' },
-  { value: 'administration', label: 'Administration' },
-  { value: 'autre', label: 'Autre' },
+  { value: 'avocat', labelKey: 'vault.share.role.avocat' },
+  { value: 'comptable', labelKey: 'vault.share.role.comptable' },
+  { value: 'banque', labelKey: 'vault.share.role.banque' },
+  { value: 'notaire', labelKey: 'vault.share.role.notaire' },
+  { value: 'administration', labelKey: 'vault.share.role.administration' },
+  { value: 'autre', labelKey: 'vault.share.role.autre' },
 ] as const
-
-const DEFAULT_SUBJECT = 'Documents partagés via PrivaDoc'
-const DEFAULT_MESSAGE =
-  'Bonjour,\n\nVeuillez trouver ci-dessous un lien sécurisé vers les documents concernant votre dossier.\n\nCordialement.'
 
 const inputClass =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200'
@@ -41,6 +38,7 @@ function HiddenIds({ ids }: { ids: string[] }) {
 }
 
 export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDialogProps) {
+  const t = useT()
   const [tab, setTab] = useState<Tab>('link')
   const [copied, setCopied] = useState(false)
   const [linkState, linkAction, linkPending] = useActionState<ShareState, FormData>(
@@ -66,7 +64,12 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
   if (!open) return null
 
   const count = documentIds.length
-  const title = count > 1 ? `Partager ${count} documents` : 'Partager le document'
+  const title =
+    count > 1
+      ? t('vault.share.titleMany', { count })
+      : t('vault.share.titleOne')
+  const defaultSubject = t('vault.share.subject')
+  const defaultMessage = t('vault.share.message')
 
   async function copy(url: string): Promise<void> {
     try {
@@ -107,7 +110,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t('vault.share.close')}
             className="rounded-md p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
           >
             <svg viewBox="0 0 24 24" fill="none" className="size-5" aria-hidden="true">
@@ -124,7 +127,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
             onClick={() => setTab('link')}
             className={tabClass(tab === 'link')}
           >
-            Lien sécurisé
+            {t('vault.share.tabLink')}
           </button>
           <button
             type="button"
@@ -133,7 +136,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
             onClick={() => setTab('email')}
             className={tabClass(tab === 'email')}
           >
-            Envoi par email
+            {t('vault.share.tabEmail')}
           </button>
         </div>
 
@@ -142,7 +145,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
             {linkState?.url ? (
               <div>
                 <label htmlFor="share-url" className={labelClass}>
-                  Lien de partage
+                  {t('vault.share.linkLabel')}
                 </label>
                 <input
                   id="share-url"
@@ -156,7 +159,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
                   onClick={() => copy(linkState.url ?? '')}
                   className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
                 >
-                  {copied ? 'Lien copié' : 'Copier'}
+                  {copied ? t('vault.share.copied') : t('vault.share.copy')}
                 </button>
               </div>
             ) : (
@@ -164,17 +167,17 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
                 <HiddenIds ids={documentIds} />
                 <div>
                   <label htmlFor="link-expiry" className={labelClass}>
-                    Expiration
+                    {t('vault.share.expiry')}
                   </label>
                   <select id="link-expiry" name="expiry" defaultValue="7d" className={`mt-1.5 ${inputClass}`}>
-                    <option value="24h">24 heures</option>
-                    <option value="7d">7 jours</option>
-                    <option value="30d">30 jours</option>
-                    <option value="never">Jamais</option>
+                    <option value="24h">{t('vault.share.expiry24h')}</option>
+                    <option value="7d">{t('vault.share.expiry7d')}</option>
+                    <option value="30d">{t('vault.share.expiry30d')}</option>
+                    <option value="never">{t('vault.share.expiryNever')}</option>
                   </select>
                 </div>
                 <fieldset>
-                  <legend className={labelClass}>Autorisation</legend>
+                  <legend className={labelClass}>{t('vault.share.permission')}</legend>
                   <div className="mt-1.5 flex flex-col gap-2">
                     <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                       <input
@@ -184,7 +187,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
                         defaultChecked
                         className="text-indigo-600 focus:ring-indigo-500"
                       />
-                      Lecture seule
+                      {t('vault.share.readOnly')}
                     </label>
                     <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                       <input
@@ -193,7 +196,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
                         value="write"
                         className="text-indigo-600 focus:ring-indigo-500"
                       />
-                      Modification
+                      {t('vault.share.write')}
                     </label>
                   </div>
                 </fieldset>
@@ -202,7 +205,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
                   disabled={linkPending}
                   className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {linkPending ? 'Création…' : 'Générer le lien'}
+                  {linkPending ? t('vault.share.creating') : t('vault.share.generateLink')}
                 </button>
               </form>
             )}
@@ -227,7 +230,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
                 {needsName && (
                   <div>
                     <label htmlFor="email-sender-name" className={labelClass}>
-                      Votre nom (affiché au destinataire)
+                      {t('vault.share.senderName')}
                     </label>
                     <input
                       id="email-sender-name"
@@ -235,14 +238,14 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
                       type="text"
                       required
                       maxLength={120}
-                      placeholder="Jean Dupont"
+                      placeholder={t('vault.share.senderNamePlaceholder')}
                       className={`mt-1.5 ${inputClass}`}
                     />
                   </div>
                 )}
                 <div>
                   <label htmlFor="email-recipient" className={labelClass}>
-                    Adresse email du destinataire
+                    {t('vault.share.recipientEmail')}
                   </label>
                   <input
                     id="email-recipient"
@@ -256,7 +259,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label htmlFor="email-role" className={labelClass}>
-                      Rôle
+                      {t('vault.share.role')}
                     </label>
                     <select
                       id="email-role"
@@ -266,43 +269,43 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
                     >
                       {RECIPIENT_ROLES.map((role) => (
                         <option key={role.value} value={role.value}>
-                          {role.label}
+                          {t(role.labelKey)}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label htmlFor="email-expiry" className={labelClass}>
-                      Expiration
+                      {t('vault.share.expiry')}
                     </label>
                     <select id="email-expiry" name="expiry" defaultValue="7d" className={`mt-1.5 ${inputClass}`}>
-                      <option value="24h">24 heures</option>
-                      <option value="7d">7 jours</option>
-                      <option value="30d">30 jours</option>
+                      <option value="24h">{t('vault.share.expiry24h')}</option>
+                      <option value="7d">{t('vault.share.expiry7d')}</option>
+                      <option value="30d">{t('vault.share.expiry30d')}</option>
                     </select>
                   </div>
                 </div>
                 <div>
                   <label htmlFor="email-subject" className={labelClass}>
-                    Objet
+                    {t('vault.share.subjectLabel')}
                   </label>
                   <input
                     id="email-subject"
                     name="subject"
                     type="text"
-                    defaultValue={DEFAULT_SUBJECT}
+                    defaultValue={defaultSubject}
                     className={`mt-1.5 ${inputClass}`}
                   />
                 </div>
                 <div>
                   <label htmlFor="email-message" className={labelClass}>
-                    Message
+                    {t('vault.share.messageLabel')}
                   </label>
                   <textarea
                     id="email-message"
                     name="message"
                     rows={4}
-                    defaultValue={DEFAULT_MESSAGE}
+                    defaultValue={defaultMessage}
                     className={`mt-1.5 ${inputClass} resize-y`}
                   />
                 </div>
@@ -317,7 +320,7 @@ export function ShareDialog({ documentIds, open, onClose, needsName }: ShareDial
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
                     </svg>
                   )}
-                  {emailPending ? "Envoi de l'email en cours…" : 'Envoyer'}
+                  {emailPending ? t('vault.share.sending') : t('vault.share.send')}
                 </button>
               </form>
             )}

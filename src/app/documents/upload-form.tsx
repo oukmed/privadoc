@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { uploadDocumentFiles } from '@/app/documents/upload-client'
 import { ScanButton } from '@/app/scan-button'
+import { useT } from '@/lib/i18n/client'
 
 interface UploadFormProps {
   /** Optional target folder; uploads land here when set. */
@@ -11,6 +12,7 @@ interface UploadFormProps {
 }
 
 export function UploadForm({ folderId }: UploadFormProps) {
+  const t = useT()
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
   const [pending, setPending] = useState(false)
@@ -36,14 +38,14 @@ export function UploadForm({ folderId }: UploadFormProps) {
     const input = formRef.current?.elements.namedItem('file') as HTMLInputElement | null
     const files = Array.from(input?.files ?? [])
     if (files.length === 0) {
-      setError('Choisis au moins un fichier à téléverser.')
+      setError(t('vault.upload.chooseFile'))
       return
     }
 
     setPending(true)
     try {
       const result = await uploadDocumentFiles(files, folderId, (done, total) =>
-        setMessage(`Téléversement ${done}/${total}…`),
+        setMessage(t('vault.upload.progress', { done, total })),
       )
       if (result.added > 0) {
         formRef.current?.reset()
@@ -52,12 +54,14 @@ export function UploadForm({ folderId }: UploadFormProps) {
       }
       setMessage(
         result.added > 0
-          ? `${result.added} document${result.added > 1 ? 's' : ''} ajouté${result.added > 1 ? 's' : ''}.`
+          ? t(result.added > 1 ? 'vault.upload.added.other' : 'vault.upload.added.one', {
+              count: result.added,
+            })
           : null,
       )
       setError(result.error ?? null)
     } catch {
-      setError('Le téléversement a échoué. Réessaie.')
+      setError(t('vault.upload.failed'))
     } finally {
       setPending(false)
     }
@@ -89,14 +93,15 @@ export function UploadForm({ folderId }: UploadFormProps) {
               <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
           )}
-          {pending ? 'Téléversement…' : 'Téléverser'}
+          {pending ? t('vault.upload.uploading') : t('vault.upload.submit')}
         </button>
       </div>
 
       {scanCount > 0 && (
         <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-          {scanCount} photo{scanCount > 1 ? 's' : ''} scannée{scanCount > 1 ? 's' : ''} ajoutée
-          {scanCount > 1 ? 's' : ''}.
+          {t(scanCount > 1 ? 'vault.upload.scanned.other' : 'vault.upload.scanned.one', {
+            count: scanCount,
+          })}
         </p>
       )}
 

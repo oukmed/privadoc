@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { inviteCollaborator, type CollaboratorState } from '@/app/collaborators/actions'
 import { RECIPIENT_ROLES, ROLE_LABELS } from '@/lib/roles'
+import { useT } from '@/lib/i18n/client'
 
 interface InviteDialogProps {
   documents: { id: string; title: string }[]
@@ -16,6 +17,7 @@ const inputClass =
 const labelClass = 'block text-sm font-medium text-slate-700 dark:text-slate-300'
 
 export function InviteDialog({ documents, folders, needsName }: InviteDialogProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [state, action, pending] = useActionState<CollaboratorState, FormData>(
     inviteCollaborator,
@@ -58,7 +60,7 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
             strokeLinecap="round"
           />
         </svg>
-        Inviter un collaborateur
+        {t('inbox.collab.invite')}
       </button>
 
       {open && (
@@ -79,13 +81,13 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                 id="invite-dialog-title"
                 className="text-lg font-semibold text-slate-900 dark:text-slate-50"
               >
-                Inviter un collaborateur
+                {t('inbox.collab.invite')}
               </h2>
               <button
                 ref={closeRef}
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Fermer"
+                aria-label={t('inbox.collab.close')}
                 className="rounded-md p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
               >
                 <svg viewBox="0 0 24 24" fill="none" className="size-5" aria-hidden="true">
@@ -105,7 +107,7 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                 {needsName && (
                   <div>
                     <label htmlFor="invite-your-name" className={labelClass}>
-                      Votre nom (affiché au destinataire)
+                      {t('inbox.collab.yourNameShown')}
                     </label>
                     <input
                       id="invite-your-name"
@@ -113,28 +115,28 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                       type="text"
                       required
                       maxLength={120}
-                      placeholder="Jean Dupont"
+                      placeholder={t('inbox.collab.yourNamePlaceholder')}
                       className={`mt-1.5 ${inputClass}`}
                     />
                   </div>
                 )}
                 <div>
                   <label htmlFor="invite-email" className={labelClass}>
-                    Adresse email du collaborateur
+                    {t('inbox.collab.collabEmail')}
                   </label>
                   <input
                     id="invite-email"
                     name="email"
                     type="email"
                     required
-                    placeholder="collaborateur@exemple.fr"
+                    placeholder={t('inbox.collab.emailPlaceholder')}
                     className={`mt-1.5 ${inputClass}`}
                   />
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label htmlFor="invite-role" className={labelClass}>
-                      Rôle
+                      {t('inbox.collab.role')}
                     </label>
                     <select
                       id="invite-role"
@@ -151,7 +153,7 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                   </div>
                   <div>
                     <label htmlFor="invite-expiry" className={labelClass}>
-                      Expiration de l&apos;accès
+                      {t('inbox.collab.accessExpiry')}
                     </label>
                     <select
                       id="invite-expiry"
@@ -159,16 +161,16 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                       defaultValue="never"
                       className={`mt-1.5 ${inputClass}`}
                     >
-                      <option value="never">Jamais</option>
-                      <option value="30d">30 jours</option>
-                      <option value="90d">90 jours</option>
-                      <option value="365d">1 an</option>
+                      <option value="never">{t('inbox.collab.expiryNever')}</option>
+                      <option value="30d">{t('inbox.collab.expiry30')}</option>
+                      <option value="90d">{t('inbox.collab.expiry90')}</option>
+                      <option value="365d">{t('inbox.collab.expiry365')}</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <p className={labelClass}>Documents et dossiers partagés</p>
+                  <p className={labelClass}>{t('inbox.collab.sharedDocsFolders')}</p>
                   <div className="mt-1.5 max-h-52 overflow-y-auto rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                     {folders.length > 0 && (
                       <div className="flex flex-col gap-2">
@@ -244,8 +246,9 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                     className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500"
                   />
                   <span>
-                    Autoriser ce collaborateur à <strong>déposer</strong> des documents dans les
-                    dossiers partagés
+                    {t('inbox.collab.canWriteBefore')}{' '}
+                    <strong>{t('inbox.collab.canWriteStrong')}</strong>{' '}
+                    {t('inbox.collab.canWriteAfter')}
                   </span>
                 </label>
               </div>
@@ -283,13 +286,13 @@ export function InviteDialog({ documents, folders, needsName }: InviteDialogProp
                       />
                     </svg>
                   )}
-                  {pending ? 'Envoi en cours…' : "Envoyer l'invitation"}
+                  {pending ? t('inbox.collab.sending') : t('inbox.collab.sendInvite')}
                 </button>
               </div>
             </form>
             ) : (
               <p className="px-6 pb-6 text-sm text-slate-500 dark:text-slate-400">
-                Ajoute d&apos;abord un document ou un dossier avant d&apos;inviter un collaborateur.
+                {t('inbox.collab.needTargetFirst')}
               </p>
             )}
           </div>

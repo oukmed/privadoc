@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/app/account/profile'
 import { requestProAccount } from '@/app/account/actions'
 import { RECIPIENT_ROLES, ROLE_LABELS } from '@/lib/roles'
+import { getT } from '@/lib/i18n/server'
 import {
   getProRequests,
   getSharedWithPro,
@@ -31,6 +32,7 @@ export default async function ProPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/login?next=/pro')
 
+  const t = await getT()
   const profile = await getProfile()
 
   // Pro space is reserved for APPROVED professional accounts. A client sees the
@@ -43,22 +45,19 @@ export default async function ProPage() {
         {pending ? (
           <>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-              Demande en cours de validation
+              {t('pro.pending.title')}
             </h1>
             <p className="mx-auto mt-3 max-w-md text-sm text-slate-500 dark:text-slate-400">
-              Votre compte professionnel est en attente d&apos;approbation par un administrateur.
-              Vous recevrez un email dès qu&apos;il sera activé.
+              {t('pro.pending.body')}
             </p>
           </>
         ) : (
           <>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-              Espace professionnel
+              {t('pro.onboarding.title')}
             </h1>
             <p className="mx-auto mt-3 max-w-md text-sm text-slate-500 dark:text-slate-400">
-              Demandez des pièces à vos clients, suivez leurs dépôts et validez chaque document en
-              un seul endroit. Créez votre compte professionnel — il sera activé après validation
-              par un administrateur.
+              {t('pro.onboarding.body')}
             </p>
             <form action={requestProAccount} className="mx-auto mt-6 flex max-w-sm flex-col gap-3 text-left">
               <div>
@@ -66,7 +65,7 @@ export default async function ProPage() {
                   htmlFor="displayName"
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300"
                 >
-                  Nom ou cabinet
+                  {t('pro.onboarding.nameLabel')}
                 </label>
                 <input
                   id="displayName"
@@ -74,7 +73,7 @@ export default async function ProPage() {
                   type="text"
                   required
                   maxLength={120}
-                  placeholder="Maître Dupont — Cabinet Dupont & Associés"
+                  placeholder={t('pro.onboarding.namePlaceholder')}
                   className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 />
               </div>
@@ -83,7 +82,7 @@ export default async function ProPage() {
                   htmlFor="profession"
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300"
                 >
-                  Profession
+                  {t('pro.onboarding.professionLabel')}
                 </label>
                 <select
                   id="profession"
@@ -91,7 +90,7 @@ export default async function ProPage() {
                   defaultValue=""
                   className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
-                  <option value="">— Choisir dans la liste —</option>
+                  <option value="">{t('pro.onboarding.professionPlaceholder')}</option>
                   {RECIPIENT_ROLES.map((role) => (
                     <option key={role} value={role}>
                       {ROLE_LABELS[role]}
@@ -102,7 +101,7 @@ export default async function ProPage() {
                   name="customProfession"
                   type="text"
                   maxLength={60}
-                  placeholder="Ou saisissez votre profession si absente de la liste"
+                  placeholder={t('pro.onboarding.customProfessionPlaceholder')}
                   className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 />
               </div>
@@ -110,7 +109,7 @@ export default async function ProPage() {
                 type="submit"
                 className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
               >
-                Créer un compte professionnel
+                {t('pro.onboarding.submit')}
               </button>
             </form>
           </>
@@ -130,27 +129,27 @@ export default async function ProPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Tableau de bord"
-        subtitle="Suivez vos clients et l'avancement de leurs dossiers."
-        action={<ButtonLink href="/pro/nouvelle-demande">Nouvelle demande</ButtonLink>}
+        title={t('pro.dashboard.title')}
+        subtitle={t('pro.dashboard.subtitle')}
+        action={<ButtonLink href="/pro/nouvelle-demande">{t('pro.common.newRequest')}</ButtonLink>}
       />
 
       {/* Diagnostic layer */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <StatTile label="Clients actifs" value={metrics.activeClients} />
-        <StatTile label="Dossiers en cours" value={metrics.openCount} />
-        <StatTile label="Pièces à valider" value={metrics.toReviewCount} tone="amber" />
+        <StatTile label={t('pro.dashboard.statActiveClients')} value={metrics.activeClients} />
+        <StatTile label={t('pro.dashboard.statOpenCount')} value={metrics.openCount} />
+        <StatTile label={t('pro.dashboard.statToReview')} value={metrics.toReviewCount} tone="amber" />
         <StatTile
-          label="Taux de complétion"
+          label={t('pro.dashboard.statCompletionRate')}
           value={`${metrics.completionRate}%`}
           tone={metrics.completionRate === 100 ? 'emerald' : 'accent'}
         />
-        <StatTile label="Retards" value={metrics.overdueCount} tone="red" />
+        <StatTile label={t('pro.dashboard.statOverdue')} value={metrics.overdueCount} tone="red" />
       </div>
 
       {/* Pieces awaiting the pro's review */}
       {toReview.length > 0 && (
-        <Card title="À valider" count={toReview.length}>
+        <Card title={t('pro.dashboard.toReviewTitle')} count={toReview.length}>
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {toReview.map((piece, i) => (
               <li
@@ -166,7 +165,7 @@ export default async function ProPage() {
                   </p>
                 </div>
                 <ButtonLink href={`/pro/${piece.requestId}`} size="sm">
-                  Examiner
+                  {t('pro.dashboard.review')}
                 </ButtonLink>
               </li>
             ))}
@@ -175,7 +174,7 @@ export default async function ProPage() {
       )}
 
       {/* Upcoming / overdue deadlines */}
-      <Card title="Échéances à venir" count={deadlines.length}>
+      <Card title={t('pro.dashboard.deadlinesTitle')} count={deadlines.length}>
         {deadlines.length > 0 ? (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {deadlines.map((d, i) => (
@@ -199,7 +198,7 @@ export default async function ProPage() {
                         : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                     }`}
                   >
-                    {d.overdue ? 'En retard · ' : ''}
+                    {d.overdue ? t('pro.dashboard.overduePrefix') : ''}
                     {new Date(d.due).toLocaleDateString('fr-FR')}
                   </span>
                 </Link>
@@ -207,13 +206,13 @@ export default async function ProPage() {
             ))}
           </ul>
         ) : (
-          <EmptyState>Aucune échéance à venir. Tout est à jour.</EmptyState>
+          <EmptyState>{t('pro.dashboard.deadlinesEmpty')}</EmptyState>
         )}
       </Card>
 
       {/* Documents a client shared with this pro (collaboration on their vault) */}
       {sharedDocs.length > 0 && (
-        <Card title="Partagé avec moi" count={sharedDocs.length}>
+        <Card title={t('pro.dashboard.sharedTitle')} count={sharedDocs.length}>
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {sharedDocs.map((doc) => (
               <li key={doc.id} className="flex items-center justify-between gap-4 px-5 py-3">
@@ -222,7 +221,7 @@ export default async function ProPage() {
                     {doc.title}
                   </p>
                   <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                    {doc.sharer ? `Partagé par ${doc.sharer} · ` : ''}
+                    {doc.sharer ? t('pro.dashboard.sharedBy', { name: doc.sharer }) : ''}
                     {new Date(doc.created_at).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
@@ -233,7 +232,7 @@ export default async function ProPage() {
                     rel="noopener noreferrer"
                     className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
                   >
-                    Ouvrir
+                    {t('pro.common.open')}
                   </a>
                 )}
               </li>
@@ -245,11 +244,11 @@ export default async function ProPage() {
       {/* Clients overview */}
       {clients.length > 0 ? (
         <Card
-          title="Clients"
+          title={t('pro.dashboard.clientsTitle')}
           count={metrics.activeClients}
           action={
             <ButtonLink href="/pro/clients" size="sm">
-              Voir tout
+              {t('pro.common.seeAll')}
             </ButtonLink>
           }
         >
@@ -274,7 +273,7 @@ export default async function ProPage() {
                   </div>
                   {client.toReviewCount > 0 && (
                     <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                      {client.toReviewCount} à valider
+                      {t('pro.common.toReviewCount', { count: client.toReviewCount })}
                     </span>
                   )}
                 </Link>
@@ -285,10 +284,9 @@ export default async function ProPage() {
       ) : (
         <Card>
           <EmptyState
-            cta={<ButtonLink href="/pro/nouvelle-demande">Créer une demande</ButtonLink>}
+            cta={<ButtonLink href="/pro/nouvelle-demande">{t('pro.dashboard.createRequestCta')}</ButtonLink>}
           >
-            Aucune demande pour l&apos;instant. Créez une demande de pièces pour un client afin de
-            suivre ses dépôts ici.
+            {t('pro.dashboard.noRequestsBody')}
           </EmptyState>
         </Card>
       )}

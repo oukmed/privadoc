@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState } from 'react'
+import { useT } from '@/lib/i18n/client'
 
 interface ConfirmDialogProps {
   /** Label of the button that opens the dialog. */
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   hiddenFields,
   destructive = false,
 }: ConfirmDialogProps) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
@@ -100,7 +102,7 @@ export function ConfirmDialog({
                 onClick={() => setOpen(false)}
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                Annuler
+                {t('vault.cancel')}
               </button>
               <button ref={confirmRef} type="submit" className={confirmClass}>
                 {confirmLabel}

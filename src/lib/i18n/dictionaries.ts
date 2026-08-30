@@ -10,9 +10,10 @@ import { nav } from '@/lib/i18n/dictionaries/nav'
 import { landing } from '@/lib/i18n/dictionaries/landing'
 import { vault } from '@/lib/i18n/dictionaries/vault'
 import { inbox } from '@/lib/i18n/dictionaries/inbox'
+import { pro } from '@/lib/i18n/dictionaries/pro'
 
 // Every translated surface. Order is irrelevant; keys must be globally unique.
-const NAMESPACES: LocaleDict[] = [auth, nav, landing, vault, inbox]
+const NAMESPACES: LocaleDict[] = [auth, nav, landing, vault, inbox, pro]
 
 function mergeNamespaces(namespaces: LocaleDict[]): Record<Locale, Dict> {
   const out = Object.fromEntries(LOCALES.map((l) => [l, {}])) as Record<Locale, Dict>
