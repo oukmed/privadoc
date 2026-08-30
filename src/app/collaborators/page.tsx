@@ -36,8 +36,8 @@ export default async function CollaboratorsPage() {
 
   // Collaborators is a personal-vault surface. Professional accounts run entirely
   // on /pro and never share personal folders, so they never land here.
-  const { displayName, isProfessional } = await getProfile()
-  if (isProfessional) redirect('/pro')
+  const { displayName, isProfessional, proStatus } = await getProfile()
+  if (isProfessional || proStatus === 'pending') redirect('/pro')
 
   const [{ data: collaborators }, { data: access }, { data: documents }, { data: folders }] =
     await Promise.all([

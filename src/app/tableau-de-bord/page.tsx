@@ -25,7 +25,8 @@ export default async function DashboardPage() {
 
   const profile = await getProfile()
   if (profile.isAdmin) redirect('/admin')
-  if (profile.isProfessional) redirect('/pro')
+  // Pros — approved or still pending admin validation — belong on /pro.
+  if (profile.isProfessional || profile.proStatus === 'pending') redirect('/pro')
 
   const [ownedRes, sharedRes, sharesRes, collabRes, requestsRes] = await Promise.all([
     supabase
