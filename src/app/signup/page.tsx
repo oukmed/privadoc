@@ -26,6 +26,7 @@ export default async function SignupPage({
       submitLabel="Créer le compte"
       action={signup}
       passwordAutoComplete="new-password"
+      showName
       next={next}
       defaultEmail={email}
       footer={
