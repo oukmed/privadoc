@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getProfile } from '@/app/account/profile'
 import { ClientShell } from '@/app/client-shell'
 import { formatBytes } from '@/lib/storage-quota'
+import { getT } from '@/lib/i18n/server'
 import { PageHeader, StatTile, Card, EmptyState, ButtonLink } from '@/app/platform-ui'
 
 interface OwnedDoc {
@@ -28,14 +29,15 @@ export default async function DashboardPage() {
   // Pros — approved or still pending admin validation — belong on /pro.
   if (profile.isProfessional || profile.proStatus === 'pending') redirect('/pro')
 
-  const [ownedRes, sharedRes, sharesRes, collabRes, requestsRes] = await Promise.all([
+  const t = await getT()
+
+  const [ownedRes, sharedRes, collabRes, requestsRes] = await Promise.all([
     supabase
       .from('documents')
       .select('id, title, size_bytes, created_at')
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false }),
     supabase.from('documents').select('id', { count: 'exact', head: true }).neq('owner_id', user.id),
-    supabase.from('shares').select('id', { count: 'exact', head: true }),
     supabase.from('collaborators').select('id', { count: 'exact', head: true }).eq('owner_id', user.id),
     supabase.from('document_requests').select('id, status').eq('client_id', user.id),
   ])
@@ -43,42 +45,48 @@ export default async function DashboardPage() {
   const owned = (ownedRes.data ?? []) as OwnedDoc[]
   const storageUsed = owned.reduce((sum, d) => sum + (d.size_bytes ?? 0), 0)
   const sharedCount = sharedRes.count ?? 0
-  const sharesCount = sharesRes.count ?? 0
   const collabCount = collabRes.count ?? 0
   const pendingRequests = (requestsRes.data ?? []).filter((r) => r.status === 'open').length
 
   const recent = owned.slice(0, RECENT_LIMIT)
-  const greeting = profile.displayName?.trim() ? `Bonjour ${profile.displayName.trim()}` : 'Bonjour'
+  const name = profile.displayName?.trim()
+  const greeting = name
+    ? t('vault.dashboard.greeting', { name })
+    : t('vault.dashboard.greetingPlain')
 
   return (
     <ClientShell>
       <div className="space-y-8">
         <PageHeader
-          title="Tableau de bord"
-          subtitle={`${greeting} — voici l'état de votre coffre-fort.`}
-          action={<ButtonLink href="/">Mes documents</ButtonLink>}
+          title={t('vault.dashboard.title')}
+          subtitle={t('vault.dashboard.subtitle', { greeting })}
+          action={<ButtonLink href="/">{t('vault.dashboard.myDocuments')}</ButtonLink>}
         />
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatTile label="Documents" value={owned.length} />
-          <StatTile label="Espace utilisé" value={formatBytes(storageUsed)} />
-          <StatTile label="Partagés avec moi" value={sharedCount} tone="accent" />
-          <StatTile label="Demandes en attente" value={pendingRequests} tone={pendingRequests > 0 ? 'amber' : 'neutral'} />
-          <StatTile label="Collaborateurs" value={collabCount} />
+          <StatTile label={t('vault.dashboard.statDocuments')} value={owned.length} />
+          <StatTile label={t('vault.dashboard.statStorage')} value={formatBytes(storageUsed)} />
+          <StatTile label={t('vault.dashboard.statShared')} value={sharedCount} tone="accent" />
+          <StatTile
+            label={t('vault.dashboard.statPending')}
+            value={pendingRequests}
+            tone={pendingRequests > 0 ? 'amber' : 'neutral'}
+          />
+          <StatTile label={t('vault.dashboard.statCollaborators')} value={collabCount} />
         </div>
 
         <Card
-          title="Documents récents"
+          title={t('vault.dashboard.recentTitle')}
           count={owned.length}
           action={
             <ButtonLink href="/" size="sm">
-              Tout voir
+              {t('vault.dashboard.seeAll')}
             </ButtonLink>
           }
         >
           {recent.length === 0 ? (
-            <EmptyState cta={<ButtonLink href="/">Ajouter un document</ButtonLink>}>
-              Votre coffre-fort est vide. Téléversez vos premiers documents pour les retrouver ici.
+            <EmptyState cta={<ButtonLink href="/">{t('vault.dashboard.addDocument')}</ButtonLink>}>
+              {t('vault.dashboard.emptyRecent')}
             </EmptyState>
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -99,25 +107,35 @@ export default async function DashboardPage() {
         {(sharedCount > 0 || pendingRequests > 0) && (
           <div className="grid gap-4 sm:grid-cols-2">
             {sharedCount > 0 && (
-              <Card title="Partagé avec moi">
+              <Card title={t('vault.dashboard.sharedTitle')}>
                 <div className="flex items-center justify-between gap-4 px-5 py-4">
                   <p className="text-sm text-slate-600 dark:text-slate-300">
-                    {sharedCount} document{sharedCount > 1 ? 's' : ''} partagé{sharedCount > 1 ? 's' : ''} avec vous.
+                    {t(
+                      sharedCount > 1
+                        ? 'vault.dashboard.sharedBody.other'
+                        : 'vault.dashboard.sharedBody.one',
+                      { count: sharedCount },
+                    )}
                   </p>
                   <ButtonLink href="/" size="sm">
-                    Consulter
+                    {t('vault.dashboard.consult')}
                   </ButtonLink>
                 </div>
               </Card>
             )}
             {pendingRequests > 0 && (
-              <Card title="Demandes de pièces">
+              <Card title={t('vault.dashboard.requestsTitle')}>
                 <div className="flex items-center justify-between gap-4 px-5 py-4">
                   <p className="text-sm text-slate-600 dark:text-slate-300">
-                    {pendingRequests} demande{pendingRequests > 1 ? 's' : ''} en attente de dépôt.
+                    {t(
+                      pendingRequests > 1
+                        ? 'vault.dashboard.requestsBody.other'
+                        : 'vault.dashboard.requestsBody.one',
+                      { count: pendingRequests },
+                    )}
                   </p>
                   <ButtonLink href="/requests" size="sm">
-                    Répondre
+                    {t('vault.dashboard.reply')}
                   </ButtonLink>
                 </div>
               </Card>
