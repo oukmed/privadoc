@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
+import { useT } from '@/lib/i18n/client'
 
 // Navigation for the private client platform. Vertical rail on desktop, a
 // horizontal scrollable strip on mobile. Highlights the active section.
@@ -26,11 +27,11 @@ const ICON = {
 }
 
 const ITEMS: ClientNavItem[] = [
-  { href: '/tableau-de-bord', label: 'Tableau de bord', icon: ICON.dashboard },
-  { href: '/', label: 'Mes documents', icon: ICON.documents },
-  { href: '/requests', label: 'Mes demandes', icon: ICON.requests },
-  { href: '/collaborators', label: 'Collaborateurs', icon: ICON.collaborators },
-  { href: '/account', label: 'Compte', icon: ICON.account },
+  { href: '/tableau-de-bord', label: 'nav.dashboard', icon: ICON.dashboard },
+  { href: '/', label: 'nav.documents', icon: ICON.documents },
+  { href: '/requests', label: 'nav.requests', icon: ICON.requests },
+  { href: '/collaborators', label: 'nav.collaborators', icon: ICON.collaborators },
+  { href: '/account', label: 'nav.account', icon: ICON.account },
 ]
 
 function isActive(pathname: string, href: string): boolean {
@@ -56,9 +57,10 @@ function ItemIcon({ children }: { children: ReactNode }) {
 
 export function ClientNav() {
   const pathname = usePathname()
+  const t = useT()
 
   return (
-    <nav aria-label="Navigation">
+    <nav aria-label={t('nav.label')}>
       {/* Desktop rail */}
       <ul className="hidden gap-1 md:flex md:flex-col">
         {ITEMS.map((item) => {
@@ -75,7 +77,7 @@ export function ClientNav() {
                 }`}
               >
                 <ItemIcon>{item.icon}</ItemIcon>
-                {item.label}
+                {t(item.label)}
               </Link>
             </li>
           )
@@ -98,7 +100,7 @@ export function ClientNav() {
                 }`}
               >
                 <ItemIcon>{item.icon}</ItemIcon>
-                {item.label}
+                {t(item.label)}
               </Link>
             </li>
           )

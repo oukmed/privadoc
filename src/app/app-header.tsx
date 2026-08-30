@@ -5,6 +5,7 @@ import { NotificationsBell } from '@/app/notifications/notifications-bell'
 import { MobileNav } from '@/app/mobile-nav'
 import { navLinksFor } from '@/app/nav-links'
 import { getProfile } from '@/app/account/profile'
+import { getT } from '@/lib/i18n/server'
 
 /** Shared header for every authenticated (client/pro) page: brand, primary nav,
  * notifications, a mobile hamburger, and sign-out. The admin console uses its own
@@ -13,6 +14,7 @@ import { getProfile } from '@/app/account/profile'
 export async function AppHeader() {
   const { isProfessional, proStatus } = await getProfile()
   const links = navLinksFor(isProfessional, proStatus)
+  const t = await getT()
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/80 px-6 py-3.5 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/70">
@@ -25,7 +27,7 @@ export async function AppHeader() {
               href={link.href}
               className="text-sm font-medium text-slate-600 transition hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
             >
-              {link.label}
+              {t(link.label)}
             </Link>
           ))}
         </nav>
@@ -36,7 +38,7 @@ export async function AppHeader() {
             type="submit"
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            Se déconnecter
+            {t('nav.signout')}
           </button>
         </form>
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { NavLink } from '@/app/nav-links'
+import { useT } from '@/lib/i18n/client'
 
 interface MobileNavProps {
   links: NavLink[]
@@ -11,6 +12,7 @@ interface MobileNavProps {
 /** Hamburger menu shown only below the `sm` breakpoint (the desktop nav is hidden there). */
 export function MobileNav({ links }: MobileNavProps) {
   const [open, setOpen] = useState(false)
+  const t = useT()
 
   useEffect(() => {
     if (!open) return
@@ -25,7 +27,7 @@ export function MobileNav({ links }: MobileNavProps) {
     <div className="relative sm:hidden">
       <button
         type="button"
-        aria-label="Menu"
+        aria-label={t('nav.menu')}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className="flex size-9 items-center justify-center rounded-lg border border-slate-300 text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -57,7 +59,7 @@ export function MobileNav({ links }: MobileNavProps) {
                 onClick={() => setOpen(false)}
                 className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                {link.label}
+                {t(link.label)}
               </Link>
             ))}
           </nav>

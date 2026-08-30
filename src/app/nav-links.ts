@@ -3,11 +3,11 @@
  * server header (AppHeader) and the client menu (MobileNav) can import them.
  */
 export const NAV_LINKS = [
-  { href: '/', label: 'Mes documents' },
-  { href: '/pro', label: 'Espace pro' },
-  { href: '/requests', label: 'Mes demandes' },
-  { href: '/collaborators', label: 'Collaborateurs' },
-  { href: '/account', label: 'Compte' },
+  { href: '/', label: 'nav.documents' },
+  { href: '/pro', label: 'nav.pro' },
+  { href: '/requests', label: 'nav.requests' },
+  { href: '/collaborators', label: 'nav.collaborators' },
+  { href: '/account', label: 'nav.account' },
 ] as const
 
 export type NavLink = (typeof NAV_LINKS)[number]

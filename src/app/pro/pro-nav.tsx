@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
+import { useT } from '@/lib/i18n/client'
 
 // Navigation for the professional space. Vertical rail on desktop, horizontal
 // scrollable strip on mobile. Highlights the active section.
@@ -28,10 +29,10 @@ const ICON = {
 }
 
 const ITEMS: ProNavItem[] = [
-  { href: '/pro', label: 'Tableau de bord', icon: ICON.dashboard },
-  { href: '/pro/demandes', label: 'Demandes', icon: ICON.requests },
-  { href: '/pro/clients', label: 'Clients', icon: ICON.clients },
-  { href: '/pro/nouvelle-demande', label: 'Nouvelle demande', icon: ICON.add, primary: true },
+  { href: '/pro', label: 'nav.dashboard', icon: ICON.dashboard },
+  { href: '/pro/demandes', label: 'nav.requests', icon: ICON.requests },
+  { href: '/pro/clients', label: 'nav.clients', icon: ICON.clients },
+  { href: '/pro/nouvelle-demande', label: 'nav.newRequest', icon: ICON.add, primary: true },
 ]
 
 function isActive(pathname: string, href: string): boolean {
@@ -57,9 +58,10 @@ function ItemIcon({ children }: { children: ReactNode }) {
 
 export function ProNav() {
   const pathname = usePathname()
+  const t = useT()
 
   return (
-    <nav aria-label="Navigation espace pro">
+    <nav aria-label={t('nav.proLabel')}>
       {/* Desktop rail */}
       <ul className="hidden gap-1 md:flex md:flex-col">
         {ITEMS.map((item) => {
@@ -80,7 +82,7 @@ export function ProNav() {
                 }
               >
                 <ItemIcon>{item.icon}</ItemIcon>
-                {item.label}
+                {t(item.label)}
               </Link>
             </li>
           )
@@ -107,7 +109,7 @@ export function ProNav() {
                 }
               >
                 <ItemIcon>{item.icon}</ItemIcon>
-                {item.label}
+                {t(item.label)}
               </Link>
             </li>
           )

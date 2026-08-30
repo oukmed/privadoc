@@ -6,9 +6,13 @@
 export * from '@/lib/i18n/config'
 import { DEFAULT_LOCALE, LOCALES, type Dict, type Locale, type LocaleDict } from '@/lib/i18n/config'
 import { auth } from '@/lib/i18n/dictionaries/auth'
+import { nav } from '@/lib/i18n/dictionaries/nav'
+import { landing } from '@/lib/i18n/dictionaries/landing'
+import { vault } from '@/lib/i18n/dictionaries/vault'
+import { inbox } from '@/lib/i18n/dictionaries/inbox'
 
 // Every translated surface. Order is irrelevant; keys must be globally unique.
-const NAMESPACES: LocaleDict[] = [auth]
+const NAMESPACES: LocaleDict[] = [auth, nav, landing, vault, inbox]
 
 function mergeNamespaces(namespaces: LocaleDict[]): Record<Locale, Dict> {
   const out = Object.fromEntries(LOCALES.map((l) => [l, {}])) as Record<Locale, Dict>
