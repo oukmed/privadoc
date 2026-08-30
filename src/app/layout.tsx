@@ -3,6 +3,9 @@ import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { SwRegister } from "@/app/sw-register";
 import { InstallBanner } from "@/app/install-banner";
+import { getLocale } from "@/lib/i18n/server";
+import { getDictionary } from "@/lib/i18n/dictionaries";
+import { I18nProvider, LocaleSync } from "@/lib/i18n/client";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,17 +43,22 @@ export const viewport: Viewport = {
   themeColor: "#4f46e5",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await getLocale();
+  const dict = getDictionary(locale);
   return (
     <html
-      lang="fr"
+      lang={locale}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col">
-        <SwRegister />
-        {children}
-        <InstallBanner />
+        <I18nProvider locale={locale} dict={dict}>
+          <SwRegister />
+          <LocaleSync locale={locale} />
+          {children}
+          <InstallBanner />
+        </I18nProvider>
       </body>
     </html>
   );

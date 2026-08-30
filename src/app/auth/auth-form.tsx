@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import type { AuthState } from '@/app/auth/actions'
 import { Brand } from '@/app/brand'
+import { useT } from '@/lib/i18n/client'
 
 interface AuthFormProps {
   title: string
@@ -36,6 +37,7 @@ export function AuthForm({
   showName,
   defaultEmail,
 }: AuthFormProps) {
+  const t = useT()
   const [state, formAction, pending] = useActionState<AuthState, FormData>(action, undefined)
   const [showPassword, setShowPassword] = useState(false)
   const [accountType, setAccountType] = useState<'private' | 'pro'>('private')
@@ -58,13 +60,13 @@ export function AuthForm({
               <>
                 <div className="space-y-1.5">
                   <span className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Type de compte
+                    {t('auth.accountType')}
                   </span>
                   <div className="grid grid-cols-2 gap-2">
                     {(
                       [
-                        { value: 'private', label: 'Particulier', hint: 'Coffre-fort personnel' },
-                        { value: 'pro', label: 'Professionnel', hint: 'Demander des pièces' },
+                        { value: 'private', label: t('auth.private'), hint: t('auth.privateHint') },
+                        { value: 'pro', label: t('auth.pro'), hint: t('auth.proHint') },
                       ] as const
                     ).map((opt) => (
                       <button
@@ -91,7 +93,7 @@ export function AuthForm({
                     htmlFor="displayName"
                     className="block text-sm font-medium text-slate-700 dark:text-slate-300"
                   >
-                    {isPro ? 'Nom ou organisme' : 'Nom complet'}
+                    {isPro ? t('auth.nameOrg') : t('auth.nameFull')}
                   </label>
                   <input
                     id="displayName"
@@ -100,14 +102,14 @@ export function AuthForm({
                     autoComplete={isPro ? 'organization' : 'name'}
                     required
                     maxLength={120}
-                    placeholder={isPro ? 'Cabinet Dupont & Associés' : 'Jean Dupont'}
+                    placeholder={isPro ? t('auth.namePlaceholderPro') : t('auth.namePlaceholderPrivate')}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                   />
                 </div>
 
                 {isPro && (
                   <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                    Le compte professionnel est activé après validation par un administrateur.
+                    {t('auth.proPending')}
                   </p>
                 )}
               </>
@@ -117,7 +119,7 @@ export function AuthForm({
                 htmlFor="email"
                 className="block text-sm font-medium text-slate-700 dark:text-slate-300"
               >
-                Email
+                {t('auth.email')}
               </label>
               <input
                 id="email"
@@ -137,14 +139,14 @@ export function AuthForm({
                   htmlFor="password"
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300"
                 >
-                  Mot de passe
+                  {t('auth.password')}
                 </label>
                 {forgotHref && (
                   <Link
                     href={forgotHref}
                     className="text-xs font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
                   >
-                    Mot de passe oublié ?
+                    {t('auth.forgot')}
                   </Link>
                 )}
               </div>
@@ -162,7 +164,7 @@ export function AuthForm({
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                   className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
                 >
                   {showPassword ? (
@@ -214,7 +216,7 @@ export function AuthForm({
               disabled={pending}
               className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-slate-900"
             >
-              {pending ? 'Veuillez patienter…' : submitLabel}
+              {pending ? t('auth.pleaseWait') : submitLabel}
             </button>
           </form>
         </div>

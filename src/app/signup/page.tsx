@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { AuthForm } from '@/app/auth/auth-form'
 import { signup } from '@/app/auth/actions'
+import { getT } from '@/lib/i18n/server'
 
 export const metadata = {
   title: 'Créer un compte · PrivaDoc',
@@ -19,11 +20,12 @@ export default async function SignupPage({
   if (email) params.set('email', email)
   const query = params.toString()
   const loginHref = query ? `/login?${query}` : '/login'
+  const t = await getT()
   return (
     <AuthForm
-      title="Créer ton compte"
-      subtitle="Commence à stocker tes documents en privé."
-      submitLabel="Créer le compte"
+      title={t('auth.signup.title')}
+      subtitle={t('auth.signup.subtitle')}
+      submitLabel={t('auth.signup.submit')}
       action={signup}
       passwordAutoComplete="new-password"
       showName
@@ -31,12 +33,12 @@ export default async function SignupPage({
       defaultEmail={email}
       footer={
         <>
-          Déjà un compte ?{' '}
+          {t('auth.haveAccount')}{' '}
           <Link
             href={loginHref}
             className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
           >
-            Se connecter
+            {t('auth.toLogin')}
           </Link>
         </>
       }
