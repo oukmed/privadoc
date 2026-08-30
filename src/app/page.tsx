@@ -9,6 +9,7 @@ import { DocumentList } from '@/app/documents/document-list'
 import { revokeShare } from '@/app/documents/share-actions'
 import { ReturnUpload, type ReturnTarget } from '@/app/collaborators/return-upload'
 import { getProfile } from '@/app/account/profile'
+import { getT } from '@/lib/i18n/server'
 import { ClientShell } from '@/app/client-shell'
 import { LandingPage } from '@/app/landing/landing-page'
 import type { Metadata } from 'next'
@@ -65,6 +66,7 @@ export default async function Home({
     : 'recent'
   const currentFolderId = param(sp.folder) || null
 
+  const t = await getT()
   const supabase = await createClient()
   const {
     data: { user },
@@ -152,9 +154,9 @@ export default async function Home({
     <ClientShell>
       <div className="mx-auto w-full max-w-3xl">
         {/* Breadcrumbs */}
-        <nav aria-label="Fil d'Ariane" className="flex flex-wrap items-center gap-1 text-sm">
+        <nav aria-label={t('vault.breadcrumb.aria')} className="flex flex-wrap items-center gap-1 text-sm">
           <Link href="/" className="font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400">
-            Mes documents
+            {t('vault.breadcrumb.home')}
           </Link>
           {breadcrumbs.map((crumb) => (
             <span key={crumb.id} className="flex items-center gap-1">
@@ -171,7 +173,7 @@ export default async function Home({
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            {breadcrumbs.at(-1)?.name ?? 'Mes documents'}
+            {breadcrumbs.at(-1)?.name ?? t('vault.breadcrumb.home')}
           </h1>
           <NewFolderButton parentId={currentFolderId ?? undefined} />
         </div>
@@ -190,7 +192,7 @@ export default async function Home({
 
         {hasError ? (
           <div className="mt-8 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-            Impossible de charger les données. As-tu exécuté la dernière migration SQL (dossiers) ?
+            {t('vault.error.load')}
             <span className="mt-1 block font-mono text-xs opacity-80">
               {(foldersError ?? documentsError)?.message}
             </span>
@@ -198,7 +200,7 @@ export default async function Home({
         ) : subfolders.length === 0 && (documents?.length ?? 0) === 0 && (sharedDocs?.length ?? 0) === 0 ? (
           <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-              {query ? 'Aucun résultat.' : 'Ce dossier est vide. Téléverse un fichier ou crée un dossier.'}
+              {query ? t('vault.empty.noResults') : t('vault.empty.folder')}
             </p>
           </div>
         ) : (
@@ -232,20 +234,20 @@ export default async function Home({
         {shares && shares.length > 0 && (
           <details className="mt-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
-              Partages actifs ({shares.length})
+              {t('vault.shares.title', { count: shares.length })}
             </summary>
             <ul className="mt-3 divide-y divide-slate-200 dark:divide-slate-800">
               {shares.map((share) => (
                 <li key={share.id} className="flex items-center justify-between gap-4 py-2 text-sm">
                   <div className="min-w-0">
                     <p className="truncate text-slate-700 dark:text-slate-300">
-                      {share.recipient_email ?? 'Lien de partage'}
+                      {share.recipient_email ?? t('vault.shares.link')}
                       {share.recipient_role ? ` · ${share.recipient_role}` : ''}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {share.expires_at
-                        ? `Expire le ${new Date(share.expires_at).toLocaleDateString()}`
-                        : "N'expire pas"}
+                        ? t('vault.shares.expiresOn', { date: new Date(share.expires_at).toLocaleDateString() })
+                        : t('vault.shares.noExpiry')}
                     </p>
                   </div>
                   <form action={revokeShare}>
@@ -254,7 +256,7 @@ export default async function Home({
                       type="submit"
                       className="shrink-0 text-sm font-medium text-red-600 transition hover:text-red-500 dark:text-red-400"
                     >
-                      Révoquer
+                      {t('vault.shares.revoke')}
                     </button>
                   </form>
                 </li>
