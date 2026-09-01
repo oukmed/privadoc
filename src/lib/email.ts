@@ -16,7 +16,7 @@ interface SendEmailArgs {
 }
 
 // Sender identity on our OWN authenticated domain (privadoc.app) — this is what
-// keeps mail out of spam once SPF/DKIM/DMARC are set for the domain in Resend.
+// keeps mail out of spam once SPF/DKIM/DMARC are set for the domain at the provider.
 const EMAIL_FROM = process.env.EMAIL_FROM ?? 'PrivaDoc <no-reply@privadoc.app>'
 const EMAIL_REPLY_TO = process.env.EMAIL_REPLY_TO
 
@@ -32,14 +32,17 @@ function htmlToText(html: string): string {
  * Transactional email delivery. SERVER-ONLY. Returns { error } with a French
  * message on failure, or {} on success.
  *
- * Prefers Resend (a real transactional provider on our authenticated domain) when
- * RESEND_API_KEY is set — the deliverable path. Falls back to Gmail SMTP otherwise,
- * so email keeps working during the migration until the domain's DNS is verified.
+ * Provider is chosen by whichever env is set, in order:
+ *   1. RESEND_API_KEY            → Resend REST API
+ *   2. SMTP_HOST (+ SMTP_USER/PASS) → any SMTP provider (Brevo, Mailjet, …)
+ *   3. GMAIL_USER (+ APP_PASSWORD)  → Gmail SMTP (legacy fallback)
+ * All send from EMAIL_FROM on the authenticated domain (except the Gmail path,
+ * which must send from the Gmail address itself).
  */
 export async function sendEmail(args: SendEmailArgs): Promise<{ error?: string }> {
   const text = htmlToText(args.html)
-  const resendKey = process.env.RESEND_API_KEY
-  return resendKey ? sendViaResend(resendKey, args, text) : sendViaGmail(args, text)
+  if (process.env.RESEND_API_KEY) return sendViaResend(process.env.RESEND_API_KEY, args, text)
+  return sendViaSmtp(args, text)
 }
 
 async function sendViaResend(
@@ -71,23 +74,32 @@ async function sendViaResend(
 }
 
 /**
- * Legacy fallback. Requires GMAIL_USER (the address) and GMAIL_APP_PASSWORD (a
- * 16-char Google App Password, NOT the account password).
+ * SMTP delivery via any provider. Set SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS for
+ * Brevo, Mailjet, etc. (sends from EMAIL_FROM on your authenticated domain). With
+ * no SMTP_HOST it falls back to Gmail (GMAIL_USER/GMAIL_APP_PASSWORD, from the
+ * Gmail address). App passwords are shown with spaces in Google's UI; strip them.
  */
-async function sendViaGmail(args: SendEmailArgs, text: string): Promise<{ error?: string }> {
-  const user = process.env.GMAIL_USER
-  // App passwords are shown with spaces in the Google UI; SMTP wants them stripped.
-  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '')
+async function sendViaSmtp(args: SendEmailArgs, text: string): Promise<{ error?: string }> {
+  const host = process.env.SMTP_HOST
+  const user = process.env.SMTP_USER ?? process.env.GMAIL_USER
+  const pass = (process.env.SMTP_PASS ?? process.env.GMAIL_APP_PASSWORD)?.replace(/\s/g, '')
 
   if (!user || !pass) {
-    return { error: "Envoi d'email non configuré (RESEND_API_KEY ou GMAIL_USER/GMAIL_APP_PASSWORD)." }
+    return {
+      error:
+        "Envoi d'email non configuré (RESEND_API_KEY, ou SMTP_HOST/SMTP_USER/SMTP_PASS, ou GMAIL_USER/GMAIL_APP_PASSWORD).",
+    }
   }
 
-  const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user, pass } })
+  const port = Number(process.env.SMTP_PORT ?? 587)
+  const transporter = host
+    ? nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } })
+    : nodemailer.createTransport({ service: 'gmail', auth: { user, pass } })
 
   try {
     await transporter.sendMail({
-      from: `PrivaDoc <${user}>`,
+      // Custom SMTP sends from our authenticated domain; Gmail must send from itself.
+      from: host ? EMAIL_FROM : `PrivaDoc <${user}>`,
       to: args.to,
       subject: args.subject,
       html: args.html,
