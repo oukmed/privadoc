@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { ReplaceForm } from './replace-form'
 import { Brand } from '@/app/brand'
+import { isPreviewableType } from '@/lib/content-type'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
 const SIGNED_URL_TTL = 60 * 10 // 10 minutes
@@ -63,11 +64,13 @@ function Invalid() {
 
 function DocumentCard({
   doc,
+  previewUrl,
   downloadUrl,
   token,
   canWrite,
 }: {
   doc: SharedDocument
+  previewUrl: string | null
   downloadUrl: string | null
   token: string
   canWrite: boolean
@@ -80,14 +83,26 @@ function DocumentCard({
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         {formatBytes(doc.size_bytes)} · {formatDate(doc.created_at)}
       </p>
-      {downloadUrl ? (
-        <div className="mt-4">
-          <a
-            href={downloadUrl}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
-          >
-            Télécharger le document
-          </a>
+      {previewUrl || downloadUrl ? (
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          {previewUrl && (
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex flex-1 items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
+            >
+              Aperçu
+            </a>
+          )}
+          {downloadUrl && (
+            <a
+              href={downloadUrl}
+              className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              Télécharger
+            </a>
+          )}
         </div>
       ) : (
         <p className="mt-4 text-sm text-red-600 dark:text-red-400">Fichier indisponible.</p>
@@ -131,15 +146,23 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const canWrite = share.permission === 'write'
   const items = await Promise.all(
     documents.map(async (doc) => {
-      // Always force an attachment download — never render a user-uploaded file
-      // inline. A file's stored content-type is attacker-controllable (it can be
-      // uploaded straight to Storage as text/html or image/svg+xml), so serving it
-      // inline would let it execute in the recipient's browser. Attachment neutralises
-      // that regardless of the stored type.
+      // A browser renders a signed URL using the object's STORED content-type, which
+      // the uploader controls. Offer an inline "Aperçu" ONLY for types that display
+      // without executing script (pdf/images) — decided from the ACTUAL stored type
+      // (Storage info()), never a client value; text/html and image/svg+xml are
+      // download-only. A forced-download link is always available.
+      const { data: info } = await supabase.storage.from(BUCKET).info(doc.storage_path)
       const { data: download } = await supabase.storage
         .from(BUCKET)
         .createSignedUrl(doc.storage_path, SIGNED_URL_TTL, { download: true })
-      return { doc, downloadUrl: download?.signedUrl ?? null }
+      let previewUrl: string | null = null
+      if (isPreviewableType(info?.contentType)) {
+        const { data: preview } = await supabase.storage
+          .from(BUCKET)
+          .createSignedUrl(doc.storage_path, SIGNED_URL_TTL)
+        previewUrl = preview?.signedUrl ?? null
+      }
+      return { doc, previewUrl, downloadUrl: download?.signedUrl ?? null }
     }),
   )
 
@@ -159,10 +182,11 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
           {canWrite ? 'Modification autorisée' : 'Lecture seule'}
         </span>
       </div>
-      {items.map(({ doc, downloadUrl }) => (
+      {items.map(({ doc, previewUrl, downloadUrl }) => (
         <DocumentCard
           key={doc.id}
           doc={doc}
+          previewUrl={previewUrl}
           downloadUrl={downloadUrl}
           token={token}
           canWrite={canWrite}
