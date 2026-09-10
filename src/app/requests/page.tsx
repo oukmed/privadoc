@@ -85,7 +85,9 @@ export default async function RequestsPage() {
     const pathByDocId = new Map((docs ?? []).map((d) => [d.id, d.storage_path]))
     const paths = [...pathByDocId.values()]
     if (paths.length > 0) {
-      const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_TTL)
+      const { data: signed } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrls(paths, SIGNED_URL_TTL, { download: true })
       const urlByPath = new Map<string, string>()
       for (const entry of signed ?? []) {
         if (entry.signedUrl) urlByPath.set(entry.path ?? '', entry.signedUrl)

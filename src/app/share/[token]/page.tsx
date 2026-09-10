@@ -63,13 +63,11 @@ function Invalid() {
 
 function DocumentCard({
   doc,
-  previewUrl,
   downloadUrl,
   token,
   canWrite,
 }: {
   doc: SharedDocument
-  previewUrl: string | null
   downloadUrl: string | null
   token: string
   canWrite: boolean
@@ -82,26 +80,14 @@ function DocumentCard({
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         {formatBytes(doc.size_bytes)} · {formatDate(doc.created_at)}
       </p>
-      {previewUrl || downloadUrl ? (
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          {previewUrl && (
-            <a
-              href={previewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex flex-1 items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
-            >
-              Aperçu
-            </a>
-          )}
-          {downloadUrl && (
-            <a
-              href={downloadUrl}
-              className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              Télécharger
-            </a>
-          )}
+      {downloadUrl ? (
+        <div className="mt-4">
+          <a
+            href={downloadUrl}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500"
+          >
+            Télécharger le document
+          </a>
         </div>
       ) : (
         <p className="mt-4 text-sm text-red-600 dark:text-red-400">Fichier indisponible.</p>
@@ -145,13 +131,15 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const canWrite = share.permission === 'write'
   const items = await Promise.all(
     documents.map(async (doc) => {
-      // Preview = inline (safe: dangerous content-types are coerced to octet-stream
-      // at upload); download = forced attachment.
-      const [{ data: preview }, { data: download }] = await Promise.all([
-        supabase.storage.from(BUCKET).createSignedUrl(doc.storage_path, SIGNED_URL_TTL),
-        supabase.storage.from(BUCKET).createSignedUrl(doc.storage_path, SIGNED_URL_TTL, { download: true }),
-      ])
-      return { doc, previewUrl: preview?.signedUrl ?? null, downloadUrl: download?.signedUrl ?? null }
+      // Always force an attachment download — never render a user-uploaded file
+      // inline. A file's stored content-type is attacker-controllable (it can be
+      // uploaded straight to Storage as text/html or image/svg+xml), so serving it
+      // inline would let it execute in the recipient's browser. Attachment neutralises
+      // that regardless of the stored type.
+      const { data: download } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrl(doc.storage_path, SIGNED_URL_TTL, { download: true })
+      return { doc, downloadUrl: download?.signedUrl ?? null }
     }),
   )
 
@@ -171,11 +159,10 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
           {canWrite ? 'Modification autorisée' : 'Lecture seule'}
         </span>
       </div>
-      {items.map(({ doc, previewUrl, downloadUrl }) => (
+      {items.map(({ doc, downloadUrl }) => (
         <DocumentCard
           key={doc.id}
           doc={doc}
-          previewUrl={previewUrl}
           downloadUrl={downloadUrl}
           token={token}
           canWrite={canWrite}

@@ -81,7 +81,9 @@ export const getSharedWithPro = cache(async (): Promise<SharedDoc[]> => {
   const signedUrls = new Map<string, string>()
   const paths = shared.map((d) => d.storage_path)
   if (paths.length > 0) {
-    const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_TTL)
+    const { data: signed } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrls(paths, SIGNED_URL_TTL, { download: true })
     for (const entry of signed ?? []) {
       if (entry.signedUrl) signedUrls.set(entry.path ?? '', entry.signedUrl)
     }

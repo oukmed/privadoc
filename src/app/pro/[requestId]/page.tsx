@@ -65,7 +65,7 @@ export default async function RequestDetailPage({
     for (const doc of docs ?? []) {
       const { data: signed } = await supabase.storage
         .from(BUCKET)
-        .createSignedUrl(doc.storage_path, SIGNED_URL_TTL)
+        .createSignedUrl(doc.storage_path, SIGNED_URL_TTL, { download: true })
       if (signed?.signedUrl) signedUrls.set(doc.id, signed.signedUrl)
     }
   }

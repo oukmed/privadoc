@@ -130,15 +130,22 @@ export default async function Home({
   const subfolders = folders.filter((f) => (f.parent_id ?? null) === currentFolderId)
   const breadcrumbs = buildBreadcrumbs(folders, currentFolderId)
 
-  // Batch-create short-lived signed URLs for the download links (owned + shared).
-  const paths = [...(documents ?? []), ...(sharedDocs ?? [])].map((d) => d.storage_path)
+  // Signed URLs. Owned docs may preview inline; docs shared WITH me are forced to
+  // download (attachment) so a spoofed content-type (e.g. text/html uploaded straight
+  // to Storage) can't execute in my browser when I open them.
   const signedUrls = new Map<string, string>()
-  if (paths.length > 0) {
-    const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_TTL)
+  const signInto = async (items: { storage_path: string }[], download: boolean) => {
+    const itemPaths = items.map((d) => d.storage_path)
+    if (itemPaths.length === 0) return
+    const { data: signed } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrls(itemPaths, SIGNED_URL_TTL, { download })
     for (const entry of signed ?? []) {
       if (entry.signedUrl) signedUrls.set(entry.path ?? '', entry.signedUrl)
     }
   }
+  await signInto(documents ?? [], false)
+  await signInto(sharedDocs ?? [], true)
 
   const folderName = new Map(folders.map((f) => [f.id, f.name]))
   const returnTargets: ReturnTarget[] = (myLinks ?? []).map((link) => ({
