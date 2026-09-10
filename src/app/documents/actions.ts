@@ -274,8 +274,13 @@ export async function renameDocument(formData: FormData): Promise<void> {
   if (!id || title.length < 1 || title.length > 255) return
 
   const supabase = await createClient()
-  // RLS restricts the update to the caller's own document.
-  await supabase.from('documents').update({ title }).eq('id', id)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return
+  // RLS also restricts this, but scope explicitly to the caller's own document
+  // so an RLS-policy regression can't turn this into an IDOR.
+  await supabase.from('documents').update({ title }).eq('id', id).eq('owner_id', user.id)
 
   revalidatePath('/')
 }
