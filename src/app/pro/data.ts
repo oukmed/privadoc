@@ -2,6 +2,7 @@ import 'server-only'
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { resolveDisplayNames } from '@/lib/names'
+import { signedUrlForViewer } from '@/lib/storage-url'
 
 // Shared data + metrics for the professional space. Every /pro/* page reads from
 // here so the queries run once per request (React cache()) and the dashboard,
@@ -79,15 +80,13 @@ export const getSharedWithPro = cache(async (): Promise<SharedDoc[]> => {
   const shared = ((sharedData ?? []) as SharedDoc[]).filter((d) => !requestDocIds.has(d.id))
 
   const signedUrls = new Map<string, string>()
-  const paths = shared.map((d) => d.storage_path)
-  if (paths.length > 0) {
-    const { data: signed } = await supabase.storage
-      .from(BUCKET)
-      .createSignedUrls(paths, SIGNED_URL_TTL, { download: true })
-    for (const entry of signed ?? []) {
-      if (entry.signedUrl) signedUrls.set(entry.path ?? '', entry.signedUrl)
-    }
-  }
+  const storage = supabase.storage.from(BUCKET)
+  await Promise.all(
+    shared.map(async (d) => {
+      const url = await signedUrlForViewer(storage, d.storage_path, SIGNED_URL_TTL)
+      if (url) signedUrls.set(d.storage_path, url)
+    }),
+  )
   const names = await resolveDisplayNames(shared.map((d) => d.owner_id))
 
   return shared.map((d) => ({

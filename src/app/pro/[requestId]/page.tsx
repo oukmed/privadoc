@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { reviewItem } from '@/app/pro/actions'
+import { signedUrlForViewer } from '@/lib/storage-url'
 import { getT } from '@/lib/i18n/server'
 
 const BUCKET = process.env.NEXT_PUBLIC_STORAGE_BUCKET ?? 'documents'
@@ -62,11 +63,10 @@ export default async function RequestDetailPage({
       .from('documents')
       .select('id, storage_path')
       .in('id', documentIds)
+    const storage = supabase.storage.from(BUCKET)
     for (const doc of docs ?? []) {
-      const { data: signed } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrl(doc.storage_path, SIGNED_URL_TTL, { download: true })
-      if (signed?.signedUrl) signedUrls.set(doc.id, signed.signedUrl)
+      const url = await signedUrlForViewer(storage, doc.storage_path, SIGNED_URL_TTL)
+      if (url) signedUrls.set(doc.id, url)
     }
   }
 

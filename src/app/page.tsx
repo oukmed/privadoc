@@ -10,6 +10,7 @@ import { revokeShare } from '@/app/documents/share-actions'
 import { ReturnUpload, type ReturnTarget } from '@/app/collaborators/return-upload'
 import { getProfile } from '@/app/account/profile'
 import { getT } from '@/lib/i18n/server'
+import { signedUrlForViewer } from '@/lib/storage-url'
 import { ClientShell } from '@/app/client-shell'
 import { LandingPage } from '@/app/landing/landing-page'
 import type { Metadata } from 'next'
@@ -130,22 +131,24 @@ export default async function Home({
   const subfolders = folders.filter((f) => (f.parent_id ?? null) === currentFolderId)
   const breadcrumbs = buildBreadcrumbs(folders, currentFolderId)
 
-  // Signed URLs. Owned docs may preview inline; docs shared WITH me are forced to
-  // download (attachment) so a spoofed content-type (e.g. text/html uploaded straight
-  // to Storage) can't execute in my browser when I open them.
+  // Signed URLs. Own docs may preview inline; docs shared WITH me preview inline only
+  // for types safe to render (pdf/images, from the REAL stored type) and download
+  // otherwise — so a spoofed content-type can't execute in my browser.
   const signedUrls = new Map<string, string>()
-  const signInto = async (items: { storage_path: string }[], download: boolean) => {
-    const itemPaths = items.map((d) => d.storage_path)
-    if (itemPaths.length === 0) return
-    const { data: signed } = await supabase.storage
-      .from(BUCKET)
-      .createSignedUrls(itemPaths, SIGNED_URL_TTL, { download })
+  const storage = supabase.storage.from(BUCKET)
+  const ownedPaths = (documents ?? []).map((d) => d.storage_path)
+  if (ownedPaths.length > 0) {
+    const { data: signed } = await storage.createSignedUrls(ownedPaths, SIGNED_URL_TTL)
     for (const entry of signed ?? []) {
       if (entry.signedUrl) signedUrls.set(entry.path ?? '', entry.signedUrl)
     }
   }
-  await signInto(documents ?? [], false)
-  await signInto(sharedDocs ?? [], true)
+  await Promise.all(
+    (sharedDocs ?? []).map(async (d) => {
+      const url = await signedUrlForViewer(storage, d.storage_path, SIGNED_URL_TTL)
+      if (url) signedUrls.set(d.storage_path, url)
+    }),
+  )
 
   const folderName = new Map(folders.map((f) => [f.id, f.name]))
   const returnTargets: ReturnTarget[] = (myLinks ?? []).map((link) => ({

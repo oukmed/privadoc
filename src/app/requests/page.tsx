@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ClientShell } from '@/app/client-shell'
 import { getProfile } from '@/app/account/profile'
+import { signedUrlForViewer } from '@/lib/storage-url'
 import { SubmitPiece } from '@/app/requests/submit-piece'
 import { ROLE_LABELS, type RecipientRole } from '@/lib/roles'
 import { getT } from '@/lib/i18n/server'
@@ -85,13 +86,14 @@ export default async function RequestsPage() {
     const pathByDocId = new Map((docs ?? []).map((d) => [d.id, d.storage_path]))
     const paths = [...pathByDocId.values()]
     if (paths.length > 0) {
-      const { data: signed } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(paths, SIGNED_URL_TTL, { download: true })
+      const storage = supabase.storage.from(BUCKET)
       const urlByPath = new Map<string, string>()
-      for (const entry of signed ?? []) {
-        if (entry.signedUrl) urlByPath.set(entry.path ?? '', entry.signedUrl)
-      }
+      await Promise.all(
+        paths.map(async (path) => {
+          const url = await signedUrlForViewer(storage, path, SIGNED_URL_TTL)
+          if (url) urlByPath.set(path, url)
+        }),
+      )
       for (const [docId, path] of pathByDocId) {
         const url = urlByPath.get(path)
         if (url) signedUrlByDocId.set(docId, url)
