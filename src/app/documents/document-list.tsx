@@ -193,10 +193,18 @@ export function DocumentList({
     if (selectedDocs.size === 1 && selectedFolders.size === 0) {
       const id = [...selectedDocs][0]
       // Fetch a FRESH signed URL (page-load URLs expire → InvalidJWT).
-      const { url, error } = await getDownloadUrl(id)
-      if (url) {
+      let result: { url?: string; error?: string }
+      try {
+        result = await getDownloadUrl(id)
+      } catch {
+        // The tab references a Server Action from a previous deployment; resync
+        // silently instead of surfacing "Failed to find Server Action".
+        window.location.reload()
+        return
+      }
+      if (result.url) {
         const anchor = document.createElement('a')
-        anchor.href = url
+        anchor.href = result.url
         anchor.target = '_blank'
         anchor.rel = 'noopener noreferrer'
         document.body.appendChild(anchor)
@@ -204,7 +212,7 @@ export function DocumentList({
         anchor.remove()
         return
       }
-      setZipError(error ?? t('vault.list.downloadUnavailable'))
+      setZipError(result.error ?? t('vault.list.downloadUnavailable'))
       return
     }
     void downloadZip()
@@ -223,9 +231,16 @@ export function DocumentList({
       window.open(doc.signedUrl, '_blank', 'noopener')
       return
     }
-    const { url, error } = await getDownloadUrl(doc.id)
-    if (url) window.open(url, '_blank', 'noopener')
-    else alert(error ?? t('vault.list.documentUnavailable'))
+    let result: { url?: string; error?: string }
+    try {
+      result = await getDownloadUrl(doc.id)
+    } catch {
+      // Stale tab vs. a newer deployment — silently reload to resync.
+      window.location.reload()
+      return
+    }
+    if (result.url) window.open(result.url, '_blank', 'noopener')
+    else alert(result.error ?? t('vault.list.documentUnavailable'))
   }
 
   return (
