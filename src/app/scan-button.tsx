@@ -364,23 +364,55 @@ class PdfBuilder {
   }
 }
 
-async function jpegToPdf(jpegBlob: Blob, width: number, height: number): Promise<Blob> {
-  const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer())
+/** One scanned page: the flattened JPEG, its pixel size, and a preview URL. */
+interface ScanPage {
+  blob: Blob
+  width: number
+  height: number
+  url: string
+}
+
+// PDF page size is expressed in points (1/72"). Declaring it in image PIXELS made the
+// page ~3x larger than A4, so viewers opened scans zoomed far out. Fit each page inside
+// A4 (portrait or landscape to match the image) and let the JPEG scale to fill it.
+const A4_LONG = 841.89
+const A4_SHORT = 595.28
+const MAX_PAGES = 10
+
+function pageSizePoints(width: number, height: number): { w: number; h: number } {
+  const [boxW, boxH] = width > height ? [A4_LONG, A4_SHORT] : [A4_SHORT, A4_LONG]
+  const scale = Math.min(boxW / width, boxH / height)
+  return { w: width * scale, h: height * scale }
+}
+
+/** Builds one PDF with one A4-fitted page per scanned image (recto, verso, …). */
+async function imagesToPdf(pages: ScanPage[]): Promise<Blob> {
   const b = new PdfBuilder()
   b.writeHeader()
+  const pageObj = (i: number) => 3 + i * 3 // page, content stream, image → 3 objects each
   b.addObject(1, ['<< /Type /Catalog /Pages 2 0 R >>'])
-  b.addObject(2, ['<< /Type /Pages /Kids [3 0 R] /Count 1 >>'])
-  b.addObject(3, [
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>`,
-  ])
-  const content = `q ${width} 0 0 ${height} 0 0 cm /Im0 Do Q`
-  b.addObject(4, [`<< /Length ${content.length} >>\nstream\n${content}\nendstream`])
-  b.addObject(5, [
-    `<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`,
-    jpegBytes,
-    '\nendstream',
-  ])
-  return new Blob([b.build(6)], { type: 'application/pdf' })
+  const kids = pages.map((_, i) => `${pageObj(i)} 0 R`).join(' ')
+  b.addObject(2, [`<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`])
+
+  for (let i = 0; i < pages.length; i++) {
+    const { blob, width, height } = pages[i]
+    const jpegBytes = new Uint8Array(await blob.arrayBuffer())
+    const { w, h } = pageSizePoints(width, height)
+    const pw = w.toFixed(2)
+    const ph = h.toFixed(2)
+    const page = pageObj(i)
+    b.addObject(page, [
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im0 ${page + 2} 0 R >> >> /Contents ${page + 1} 0 R >>`,
+    ])
+    const content = `q ${pw} 0 0 ${ph} 0 0 cm /Im0 Do Q`
+    b.addObject(page + 1, [`<< /Length ${content.length} >>\nstream\n${content}\nendstream`])
+    b.addObject(page + 2, [
+      `<< /Type /XObject /Subtype /Image /Width ${width} /Height ${height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`,
+      jpegBytes,
+      '\nendstream',
+    ])
+  }
+  return new Blob([b.build(3 + pages.length * 3)], { type: 'application/pdf' })
 }
 
 /**
@@ -436,6 +468,8 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
   const [corners, setCorners] = useState<Corners>(DEFAULT_CORNERS)
   const [enhance, setEnhance] = useState(true)
   const [processing, setProcessing] = useState(false)
+  // Pages already scanned for the current document (recto, verso, extra sheets…).
+  const [pages, setPages] = useState<ScanPage[]>([])
   const containerRef = useRef<HTMLDivElement>(null)
   const draggingIndex = useRef<number | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -549,16 +583,47 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
     draggingIndex.current = null
   }
 
+  /** Flattens the current photo and adds it as the next page; the review screen follows. */
   async function confirm(): Promise<void> {
     if (!photoUrl) return
     setProcessing(true)
     try {
       const { blob, width, height } = await processScan(photoUrl, corners, enhance)
-      const pdfBlob = await jpegToPdf(blob, width, height)
-      onCapture(new File([pdfBlob], `scan-${Date.now()}.pdf`, { type: 'application/pdf' }))
+      setPages((prev) => [...prev, { blob, width, height, url: URL.createObjectURL(blob) }])
       closeAdjust()
     } catch {
       // Leave the user on the adjustment screen so they can retry.
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  function clearPages(): void {
+    pages.forEach((p) => URL.revokeObjectURL(p.url))
+    setPages([])
+  }
+
+  function removePage(index: number): void {
+    URL.revokeObjectURL(pages[index].url)
+    setPages((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  /** Re-shoots the page being adjusted (back to the camera) without leaving the scan. */
+  async function retake(): Promise<void> {
+    closeAdjust()
+    await startScan()
+  }
+
+  /** Bundles every scanned page into ONE PDF and hands it to the caller. */
+  async function finish(): Promise<void> {
+    if (pages.length === 0) return
+    setProcessing(true)
+    try {
+      const pdfBlob = await imagesToPdf(pages)
+      onCapture(new File([pdfBlob], `scan-${Date.now()}.pdf`, { type: 'application/pdf' }))
+      clearPages()
+    } catch {
+      // Keep the pages so the user can retry "Terminer".
     } finally {
       setProcessing(false)
     }
@@ -670,7 +735,7 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
           <div className="mx-auto flex w-full max-w-md gap-3">
             <button
               type="button"
-              onClick={closeAdjust}
+              onClick={retake}
               disabled={processing}
               className="flex-1 rounded-lg border border-white/30 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
@@ -682,7 +747,62 @@ export function ScanButton({ onCapture, disabled }: ScanButtonProps) {
               disabled={processing}
               className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {processing ? 'Traitement…' : 'Valider'}
+              {processing ? 'Traitement…' : pages.length > 0 ? 'Ajouter cette page' : 'Valider'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Review: every page scanned so far. Add another (recto → verso…) or finish into ONE PDF. */}
+      {pages.length > 0 && !stream && !photoUrl && (
+        <div className="fixed inset-0 z-50 flex flex-col gap-4 overflow-y-auto bg-black/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <p className="mx-auto w-full max-w-md text-center text-sm font-medium text-white">
+            {pages.length} {pages.length > 1 ? 'pages scannées' : 'page scannée'}
+          </p>
+          <ul className="mx-auto grid w-full max-w-md grid-cols-2 gap-3">
+            {pages.map((page, i) => (
+              <li key={page.url} className="relative overflow-hidden rounded-lg bg-white/10">
+                {/* eslint-disable-next-line @next/next/no-img-element -- object URL preview */}
+                <img src={page.url} alt={`Page ${i + 1}`} className="block h-40 w-full object-contain" />
+                <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">
+                  {i + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removePage(i)}
+                  disabled={processing}
+                  aria-label={`Supprimer la page ${i + 1}`}
+                  className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-semibold text-white disabled:opacity-60"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="mx-auto flex w-full max-w-md flex-col gap-2">
+            <button
+              type="button"
+              onClick={startScan}
+              disabled={processing || pages.length >= MAX_PAGES}
+              className="rounded-lg border border-white/30 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {pages.length >= MAX_PAGES ? `Maximum ${MAX_PAGES} pages` : '+ Ajouter une page (verso, autre feuille…)'}
+            </button>
+            <button
+              type="button"
+              onClick={finish}
+              disabled={processing}
+              className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {processing ? 'Création du PDF…' : `Terminer (${pages.length} ${pages.length > 1 ? 'pages' : 'page'})`}
+            </button>
+            <button
+              type="button"
+              onClick={clearPages}
+              disabled={processing}
+              className="px-4 py-2 text-sm text-white/70 disabled:opacity-50"
+            >
+              Annuler le scan
             </button>
           </div>
         </div>
