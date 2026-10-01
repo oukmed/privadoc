@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Light mode only: `dark:` utilities apply solely under an explicit `.dark` ancestor
+   (never set), instead of following the device's prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -11,13 +15,8 @@
 :root {
   --background: #f8fafc; /* slate-50 */
   --foreground: #0f172a; /* slate-900 */
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #020617; /* slate-950 */
-    --foreground: #e2e8f0; /* slate-200 */
-  }
+  /* Keep native controls, scrollbars and form fields light too. */
+  color-scheme: light;
 }
 
 @layer base {
